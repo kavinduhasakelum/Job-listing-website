@@ -1,7 +1,12 @@
-import React from 'react';
+import React from "react";
+import NavBar from "../components/NavBar";
 
 function HomePage() {
-    return ( <h1 className='text-3xl font-semibold text-amber-300'>This is Home page!</h1> );
+  return (
+    <div className="bg-white h-screen w-screen">
+        <NavBar />
+    </div>
+  );
 }
 
 export default HomePage;
