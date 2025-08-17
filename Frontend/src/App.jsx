@@ -1,9 +1,10 @@
 import React from "react";
-import { createBrowserRouter,RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import Root from "./pages/Root";
 import JobView from "./pages/JobView";
-
+import SearchJob from "./pages/SearchJob";
+import RegisterLogin from "./pages/RegisterLogin";
 
 const router = createBrowserRouter([
   {
@@ -12,15 +13,23 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <HomePage />
+        element: <HomePage />,
       },
       {
-        path:"job",
-        element:<JobView />
-      }
-    ]
-  }
-])
+        path: "job",
+        element: <JobView />,
+      },
+      {
+        path: "jobs",
+        element: <SearchJob />,
+      },
+      {
+        path: "register",
+        element: <RegisterLogin />,
+      },
+    ],
+  },
+]);
 
 function App() {
   return <RouterProvider router={router} />;
