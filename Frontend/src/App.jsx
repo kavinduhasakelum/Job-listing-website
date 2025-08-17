@@ -5,6 +5,7 @@ import Root from "./pages/Root";
 import JobView from "./pages/JobView";
 import SearchJob from "./pages/SearchJob";
 import RegisterLogin from "./pages/RegisterLogin";
+import JobPostForm from "./pages/JobPostForm";
 
 const router = createBrowserRouter([
   {
@@ -27,6 +28,10 @@ const router = createBrowserRouter([
         path: "register",
         element: <RegisterLogin />,
       },
+      {
+        path:"postjob",
+        element:<JobPostForm />
+      }
     ],
   },
 ]);
