@@ -32,6 +32,10 @@ const router = createBrowserRouter([
         path:"postjob",
         element:<JobPostForm />
       }
+      ,{
+        path:"search",
+        element:<SearchJob />
+      }
     ],
   },
 ]);
