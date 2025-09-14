@@ -7,7 +7,7 @@ function RegisterLogin() {
     <div className="flex justify-center items-center min-h-screen">
       <div className="flex flex-col justify-center items-center gap-4 w-[500px] mx-auto px-6 py-7 border border-gray-300 rounded-lg shadow-lg">
         <h2 className="text-3xl font-semibold">
-          {isLogin ? "Login to your account" : "Create your account"}
+          {isLogin ? "Login to your account" : "Create your account "}
         </h2>
         <form className="flex flex-col gap-4 w-full">
           {!isLogin && (

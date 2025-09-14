@@ -1,4 +1,6 @@
 import React from "react";
+import DropDown from "./DropDown";
+import Button from "./Button";
 function SearchAndFilter() {
   return (
     <div className="flex flex-col justify-start items-stretch w-[450px] gap-4 mt-8">
@@ -26,19 +28,9 @@ function SearchAndFilter() {
           className="h-10 w-full rounded-xl bg-gray-100 border border-gray-200 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
-      <select className="border border-gray-300 rounded-xl p-2">
-        <option value="">Location</option>
-        <option value="engineering">Engineering</option>
-        <option value="design">Design</option>
-        <option value="marketing">Marketing</option>
-      </select>
-      <select className="border border-gray-300 rounded-xl p-2">
-        <option value="">Job</option>
-        <option value="engineering">Engineering</option>
-        <option value="design">Design</option>
-        <option value="marketing">Marketing</option>
-      </select>
-      <button className="bg-blue-500 text-white rounded-xl p-2 focus:ring-blue-500">Search</button>
+      <DropDown />
+      <DropDown />
+    <Button Name="Search Jobs"/>
     </div>
   );
 }
