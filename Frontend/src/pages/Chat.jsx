@@ -7,7 +7,7 @@ function ChatPage() {
   return (
     <div className="min-h-screen overflow-hidden">
       <div className="flex gap-8 w-full">
-        <div className="flex flex-col justify-start basis-1/4 overflow-auto gap-6">
+        <div className="flex flex-col justify-start basis-1/4 overflow-y-auto gap-6">
           <h1 className="text-2xl font-bold p-4">Messaging</h1>
           <SearchInput />
           <ChatContactCard />
@@ -17,9 +17,9 @@ function ChatPage() {
           <ChatContactCard />
           <ChatContactCard />
         </div>
-        <div className="flex flex-col basis-3/4 relative h-screen">
+        <div className="flex flex-col basis-3/4 relative min-h-screen">
           <h1 className="text-3xl font-bold p-4">Company Name</h1>
-          <div className="flex flex-col gap-2 pb-20 overflow-y-auto">
+          <div className="flex-1 flex flex-col gap-2 pb-20 overflow-y-auto">
             <ChatTextBox />
             <ChatTextBox user={true} />
             <ChatTextBox />
