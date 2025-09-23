@@ -1,14 +1,21 @@
-const express = require('express');
-const bodyParser = require('body-parser');
+import express from 'express';
+import dotenv from 'dotenv';
+import authRoutes from './routes/authRoutes.js';
 
-
+dotenv.config();
 const app = express();
+const port = process.env.PORT || 3000;
+
+app.use(express.json());
+
+// Routes
+app.use('/auth', authRoutes);
 
 app.get('/', (req, res) => {
-    res.send('Hello World');
+    res.send('Job Listing Backend is running');
 });
 
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+});
 
-app.listen(3000, () => {
-    console.log('Server is running on port 3000');
-})
