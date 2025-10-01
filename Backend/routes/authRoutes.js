@@ -9,7 +9,12 @@ import {
     getActiveUserById,
     getInactiveUserById,
     softDeleteUser,
-    hardDeleteUser
+    hardDeleteUser,
+    verifyEmail,
+    forgotPassword,
+    resetPassword,
+    sendVerificationEmail,
+    changePassword
 } from '../controllers/authController.js';
 
 import { verifyToken, isAdmin } from '../middlewares/authMiddleware.js'; // Assume this middleware verifies token
@@ -30,5 +35,18 @@ router.get('/user/inactive/:id', verifyToken, getInactiveUserById);
 
 router.delete('/user/soft/:id', verifyToken, softDeleteUser);
 router.delete('/user/hard/:id', verifyToken, isAdmin, hardDeleteUser); // Admin only
+
+// Email verification
+router.get("/verify-email", verifyEmail);
+
+// Email Verification Send
+router.post("/send-verification", sendVerificationEmail);
+
+// Forgot & reset password
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
+
+// Change Password
+router.post("/change-password", verifyToken, changePassword);
 
 export default router;
