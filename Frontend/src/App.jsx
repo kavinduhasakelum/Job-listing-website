@@ -8,6 +8,7 @@ import RegisterLogin from "./pages/RegisterLogin";
 import JobPostForm from "./pages/JobPostForm";
 import ChatPage from "./pages/Chat";
 
+
 const router = createBrowserRouter([
   {
     path: "/",
