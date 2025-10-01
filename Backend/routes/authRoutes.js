@@ -14,7 +14,8 @@ import {
     forgotPassword,
     resetPassword,
     sendVerificationEmail,
-    changePassword
+    changePassword,
+    getUsersByRole
 } from '../controllers/authController.js';
 
 import { verifyToken, isAdmin } from '../middlewares/authMiddleware.js'; // Assume this middleware verifies token
@@ -48,5 +49,8 @@ router.post("/reset-password", resetPassword);
 
 // Change Password
 router.post("/change-password", verifyToken, changePassword);
+
+// Get users by role (Admin only)
+router.get("/users/:role", verifyToken, isAdmin, getUsersByRole);
 
 export default router;

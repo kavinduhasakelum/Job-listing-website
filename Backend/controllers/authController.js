@@ -407,3 +407,30 @@ export const changePassword = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+
+// Get User By Role (Admin Only)
+export const getUsersByRole = async (req, res) => {
+  try {
+    const { role } = req.params;
+
+    const ALLOWED_ROLES = ["admin", "employer", "jobseeker"];
+    if (!ALLOWED_ROLES.includes(role.toLowerCase())) {
+      return res.status(400).json({ error: "Invalid role provided" });
+    }
+
+    // Only return safe fields (don’t expose passwords, etc.)
+    const [users] = await pool.query(
+      "SELECT user_id, userName, email, role, is_verified, created_at FROM users WHERE role = ?",
+      [role.toLowerCase()]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({ error: `No users found with role: ${role}` });
+    }
+
+    res.json(users);
+  } catch (err) {
+    console.error("Get users by role error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
