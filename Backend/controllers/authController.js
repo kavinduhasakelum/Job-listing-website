@@ -1,4 +1,4 @@
-import pool from "../config/dbconnection.js";
+import pool from "../config/dbConnection.js";
 import cloudinary from "../utils/cloudinary.js";
 import {
     CREATE_USER,
