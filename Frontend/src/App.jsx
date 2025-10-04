@@ -7,42 +7,27 @@ import SearchJob from "./pages/SearchJob";
 import RegisterLogin from "./pages/RegisterLogin";
 import JobPostForm from "./pages/JobPostForm";
 import ChatPage from "./pages/Chat";
-
+import AdminDashboard from "./pages/AdminDashboard";
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Root />,
+    element: <Root />,   // Main site layout (Navbar + Footer + <Outlet />)
     children: [
-      {
-        index: true,
-        element: <HomePage />,
-      },
-      {
-        path: "job",
-        element: <JobView />,
-      },
-      {
-        path: "jobs",
-        element: <SearchJob />,
-      },
-      {
-        path: "register",
-        element: <RegisterLogin />,
-      },
-      {
-        path: "postjob",
-        element: <JobPostForm />,
-      },
-      {
-        path: "search",
-        element: <SearchJob />,
-      },
-      {
-        path: "chat",
-        element: <ChatPage />,
-      },
+      { index: true, element: <HomePage /> },
+      { path: "job", element: <JobView /> },
+      { path: "jobs", element: <SearchJob /> },
+      { path: "register", element: <RegisterLogin /> },
+      { path: "postjob", element: <JobPostForm /> },
+      { path: "search", element: <SearchJob /> },
+      { path: "chat", element: <ChatPage /> },
     ],
+  },
+
+  // Independent Admin Dashboard route (no Root layout)
+  {
+    path: "/admin",
+    element: <AdminDashboard />,
   },
 ]);
 
