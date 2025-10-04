@@ -10,7 +10,7 @@ import {
   FaDollarSign,
 } from "react-icons/fa";
 
-// ====================== Sidebar ======================
+// Sidebar
 function Sidebar({ open, setOpen }) {
   const menus = [
     { title: "Dashboard", icon: <FaHome /> },
@@ -58,7 +58,7 @@ function Sidebar({ open, setOpen }) {
   );
 }
 
-// ====================== Topbar ======================
+// Topbar
 function Topbar() {
   return (
     <div className="w-full flex justify-between items-center bg-white shadow px-6 py-3">
@@ -79,7 +79,7 @@ function Topbar() {
   );
 }
 
-// ====================== Card Component ======================
+// Card Component
 function Card({ title, value, icon }) {
   return (
     <div className="bg-gradient-to-r from-indigo-600 to-orange-500 text-white p-6 rounded-2xl shadow hover:scale-[1.02] transition">
@@ -94,7 +94,7 @@ function Card({ title, value, icon }) {
   );
 }
 
-// ====================== Job Table ======================
+// Job Table
 function JobTable() {
   const jobs = [
     { title: "Frontend Developer", applicants: 45, status: "Active", salary: "$3000/mo" },
@@ -150,12 +150,12 @@ function JobTable() {
   );
 }
 
-// ====================== Applicants Table ======================
+// Applicants Table
 function ApplicantsTable() {
   const applicants = [
-    { name: "John Doe", position: "Frontend Developer", status: "Reviewed" },
-    { name: "Sara Lee", position: "UI/UX Designer", status: "Shortlisted" },
-    { name: "Mark Smith", position: "Backend Engineer", status: "Interviewed" },
+    { name: "Sunera", position: "Frontend Developer", status: "Reviewed" },
+    { name: "Movindu", position: "UI/UX Designer", status: "Shortlisted" },
+    { name: "Malith Perera", position: "Backend Engineer", status: "Interviewed" },
   ];
 
   return (
@@ -192,7 +192,7 @@ function ApplicantsTable() {
   );
 }
 
-// ====================== Admin Dashboard ======================
+// Admin Dashboard 
 export default function AdminDashboard() {
   const [open, setOpen] = useState(true);
 
