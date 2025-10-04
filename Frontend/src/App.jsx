@@ -8,6 +8,7 @@ import RegisterLogin from "./pages/RegisterLogin";
 import JobPostForm from "./pages/JobPostForm";
 import ChatPage from "./pages/Chat";
 import AdminDashboard from "./pages/AdminDashboard";
+import FindJobsPage from "./pages/FindJobsPage";
 
 const router = createBrowserRouter([
   {
@@ -21,6 +22,7 @@ const router = createBrowserRouter([
       { path: "postjob", element: <JobPostForm /> },
       { path: "search", element: <SearchJob /> },
       { path: "chat", element: <ChatPage /> },
+      { path: "find-jobs", element: <FindJobsPage /> },
     ],
   },
 

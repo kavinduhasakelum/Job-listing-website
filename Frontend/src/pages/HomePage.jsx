@@ -2,18 +2,49 @@ import React from "react";
 import { motion } from "framer-motion";
 import SearchAndFilter from "../components/SearchAndFilter";
 import HomeJobCard from "../components/HomeJobCard";
+import { NavLink } from "react-router-dom";
 
 const logos = [
-  { src: "https://cdn-icons-png.flaticon.com/512/281/281764.png", alt: "Google" },
-  { src: "https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg", alt: "Amazon" },
-  { src: "https://cdn-icons-png.flaticon.com/512/732/732221.png", alt: "Microsoft" },
-  { src: "https://cdn-icons-png.flaticon.com/512/5968/5968705.png", alt: "Figma" },
-  { src: "https://cdn-icons-png.flaticon.com/512/5968/5968520.png", alt: "Adobe" },
-  { src: "https://cdn-icons-png.flaticon.com/512/5968/5968764.png", alt: "Meta" },
-  { src: "https://cdn-icons-png.flaticon.com/512/5968/5968709.png", alt: "Netflix" },
-  { src: "https://cdn-icons-png.flaticon.com/512/174/174872.png", alt: "Spotify" },
-  { src: "https://cdn-icons-png.flaticon.com/512/733/733553.png", alt: "GitHub" },
-  { src: "https://cdn-icons-png.flaticon.com/512/3536/3536505.png", alt: "LinkedIn" },
+  {
+    src: "https://cdn-icons-png.flaticon.com/512/281/281764.png",
+    alt: "Google",
+  },
+  {
+    src: "https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg",
+    alt: "Amazon",
+  },
+  {
+    src: "https://cdn-icons-png.flaticon.com/512/732/732221.png",
+    alt: "Microsoft",
+  },
+  {
+    src: "https://cdn-icons-png.flaticon.com/512/5968/5968705.png",
+    alt: "Figma",
+  },
+  {
+    src: "https://cdn-icons-png.flaticon.com/512/5968/5968520.png",
+    alt: "Adobe",
+  },
+  {
+    src: "https://cdn-icons-png.flaticon.com/512/5968/5968764.png",
+    alt: "Meta",
+  },
+  {
+    src: "https://cdn-icons-png.flaticon.com/512/5968/5968709.png",
+    alt: "Netflix",
+  },
+  {
+    src: "https://cdn-icons-png.flaticon.com/512/174/174872.png",
+    alt: "Spotify",
+  },
+  {
+    src: "https://cdn-icons-png.flaticon.com/512/733/733553.png",
+    alt: "GitHub",
+  },
+  {
+    src: "https://cdn-icons-png.flaticon.com/512/3536/3536505.png",
+    alt: "LinkedIn",
+  },
 ];
 
 const rand = (min, max) => Math.random() * (max - min) + min;
@@ -108,17 +139,19 @@ function HomePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <motion.button
-            whileHover={{
-              scale: 1.1,
-              y: -3,
-              boxShadow: "0px 8px 25px rgba(168, 85, 247, 0.4)",
-            }}
-            whileTap={{ scale: 0.95 }}
-            className="px-8 py-3 bg-gradient-to-r from-purple-600 to-orange-500 text-white rounded-2xl shadow-md font-semibold"
-          >
-            Browse Jobs
-          </motion.button>
+          <NavLink to="/find-jobs">
+            <motion.button
+              whileHover={{
+                scale: 1.1,
+                y: -3,
+                boxShadow: "0px 8px 25px rgba(168, 85, 247, 0.4)",
+              }}
+              whileTap={{ scale: 0.95 }}
+              className="px-8 py-3 bg-gradient-to-r from-purple-600 to-orange-500 text-white rounded-2xl shadow-md font-semibold"
+            >
+              Browse Jobs
+            </motion.button>
+          </NavLink>
 
           <motion.button
             whileHover={{
@@ -134,14 +167,14 @@ function HomePage() {
         </motion.div>
       </section>
 
-      {/* SEARCH + JOB SECTION */}
+      {/* SEARCH + JOB SECTION
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="max-w-6xl mx-auto px-4"
       >
         <SearchAndFilter />
-      </motion.div>
+      </motion.div> */}
 
       {/* Featured Jobs */}
       <section className="max-w-6xl mx-auto px-4 py-12">
