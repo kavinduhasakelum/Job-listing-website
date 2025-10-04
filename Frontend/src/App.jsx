@@ -1,19 +1,22 @@
 import React from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import HomePage from "./pages/HomePage";
+
+// Pages (add or keep existing ones)
 import Root from "./pages/Root";
+import HomePage from "./pages/HomePage";
 import JobView from "./pages/JobView";
 import SearchJob from "./pages/SearchJob";
 import RegisterLogin from "./pages/RegisterLogin";
 import JobPostForm from "./pages/JobPostForm";
 import ChatPage from "./pages/Chat";
-import AdminDashboard from "./pages/AdminDashboard";
 import FindJobsPage from "./pages/FindJobsPage";
+import AdminDashboard from "./pages/AdminDashboard";
+import AboutUs from "./pages/AboutUs"; // <-- NEW
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Root />,   // Main site layout (Navbar + Footer + <Outlet />)
+    element: <Root />, // layout with NavBar + Footer + <Outlet />
     children: [
       { index: true, element: <HomePage /> },
       { path: "job", element: <JobView /> },
@@ -23,18 +26,15 @@ const router = createBrowserRouter([
       { path: "search", element: <SearchJob /> },
       { path: "chat", element: <ChatPage /> },
       { path: "find-jobs", element: <FindJobsPage /> },
+      { path: "about", element: <AboutUs /> }, // <-- ABOUT ROUTE
     ],
   },
-
-  // Independent Admin Dashboard route (no Root layout)
   {
     path: "/admin",
-    element: <AdminDashboard />,
+    element: <AdminDashboard />, // independent admin route
   },
 ]);
 
-function App() {
+export default function App() {
   return <RouterProvider router={router} />;
 }
-
-export default App;
