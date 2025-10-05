@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { Navigate, useNavigate } from "react-router-dom";
 
 // SQL Query for reference
 export const CREATE_USER = `
@@ -8,6 +9,7 @@ export const CREATE_USER = `
 `;
 
 function RegisterLogin() {
+  const navigate=useNavigate()
   const [isLogin, setIsLogin] = useState(false);
 
   // Form data state
@@ -84,7 +86,29 @@ function RegisterLogin() {
         setIsSubmitting(false);
       }
     } else {
-      // Login logic
+      try{
+        const response = await axios.post(
+          `${API_BASE_URL}/auth/login`,
+          {
+            name_or_email: formData.email,
+            password: formData.password,
+          }
+        );
+        setStatusMessage(
+          response.data?.message ||
+            "User logged in successfully."
+        );
+        localStorage.setItem("token", response.data.token);
+        // Redirect to home or dashboard after login
+        navigate("/");
+      }catch(error){
+        const apiError =
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          error.message ||
+          "Login failed. Please try again.";
+        setErrorMessage(apiError);
+      }
       console.log("Login attempt:", {
         email: formData.email,
         password: formData.password,

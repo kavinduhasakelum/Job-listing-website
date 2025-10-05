@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { motion } from "framer-motion";
 import SearchAndFilter from "../components/SearchAndFilter";
 import HomeJobCard from "../components/HomeJobCard";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 
 const logos = [
   {
@@ -50,6 +50,24 @@ const logos = [
 const rand = (min, max) => Math.random() * (max - min) + min;
 
 function HomePage() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/register");
+      return;
+    }
+
+    // axios.get("/api/me", {
+    //   headers: { Authorization: `Bearer ${token}` }
+    // }).then(res => {
+    //   setUser(res.data);
+    // }).catch(() => {
+    //   localStorage.removeItem("token");
+    //   navigate("/login");
+    // });
+  }, [navigate]);
+
   const jobCards = [1, 2, 3, 4, 5, 6];
 
   return (
