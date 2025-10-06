@@ -1,7 +1,26 @@
 import React, { useState } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 function NavBar() {
   const [open, setOpen] = useState(false);
+  const { user, isAuthenticated, logout, isAdmin, isEmployer } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/register');
+  };
+
+  const handleProfileClick = () => {
+    if (isAdmin()) {
+      navigate('/admin');
+    } else if (isEmployer()) {
+      navigate('/employer-dashboard');
+    } else {
+      navigate('/profile');
+    }
+  };
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -81,20 +100,58 @@ function NavBar() {
             <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
           </button>
 
-          {/* CTA */}
-          <button
-            type="button"
-            className="h-10 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-medium hover:opacity-90 hover:scale-105 shadow-md transition-transform duration-300"
-          >
-            Post a Job
-          </button>
-
-          {/* Avatar */}
-          <img
-            src="https://i.pravatar.cc/80?img=5"
-            alt="Profile avatar"
-            className="w-9 h-9 rounded-full object-cover border border-gray-200 hover:scale-105 transition-transform duration-300 cursor-pointer"
-          />
+          {/* CTA - Show different buttons based on auth status */}
+          {isAuthenticated ? (
+            <div className="flex items-center gap-2">
+              {(isEmployer() || isAdmin()) && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/postjob')}
+                  className="h-10 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-medium hover:opacity-90 hover:scale-105 shadow-md transition-transform duration-300"
+                >
+                  Post a Job
+                </button>
+              )}
+              
+              {/* User Menu Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={handleProfileClick}
+                  className="w-9 h-9 rounded-full object-cover border border-gray-200 hover:scale-105 transition-transform duration-300 cursor-pointer bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-bold flex items-center justify-center"
+                >
+                  {user?.name?.charAt(0)?.toUpperCase() || user?.userName?.charAt(0)?.toUpperCase() || 'U'}
+                </button>
+              </div>
+              
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                className="h-10 px-3 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition-colors duration-300"
+                title="Logout"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate('/register')}
+                className="h-10 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-medium hover:opacity-90 hover:scale-105 shadow-md transition-transform duration-300"
+              >
+                Sign Up
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/register')}
+                className="h-10 px-4 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition-colors duration-300"
+              >
+                Login
+              </button>
+            </div>
+          )}
 
           {/* Mobile menu toggle */}
           <button
@@ -177,12 +234,65 @@ function NavBar() {
             )}
           </ul>
 
-          <button
-            type="button"
-            className="w-full h-10 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-medium shadow hover:opacity-90 transition"
-          >
-            Post a Job
-          </button>
+          {isAuthenticated ? (
+            <div className="space-y-2">
+              {(isEmployer() || isAdmin()) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigate('/postjob');
+                    setOpen(false);
+                  }}
+                  className="w-full h-10 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-medium shadow hover:opacity-90 transition"
+                >
+                  Post a Job
+                </button>
+              )}
+              
+              <button
+                onClick={() => {
+                  handleProfileClick();
+                  setOpen(false);
+                }}
+                className="w-full h-10 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition"
+              >
+                {isAdmin() ? 'Admin Dashboard' : isEmployer() ? 'Dashboard' : 'Profile'}
+              </button>
+              
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setOpen(false);
+                }}
+                className="w-full h-10 rounded-xl bg-red-100 text-red-700 text-sm font-medium hover:bg-red-200 transition"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  navigate('/register');
+                  setOpen(false);
+                }}
+                className="w-full h-10 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-medium shadow hover:opacity-90 transition"
+              >
+                Sign Up
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  navigate('/register');
+                  setOpen(false);
+                }}
+                className="w-full h-10 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition"
+              >
+                Login
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </nav>
