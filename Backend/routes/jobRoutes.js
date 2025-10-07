@@ -1,6 +1,6 @@
 import express from "express";
 import { 
-  createJob, getAllJobs, getJobById, getEmployerJobs, updateJob, deleteJob
+ approveJob, saveJob, getSavedJobs, removeSavedJob, createJob, getAllJobs, getJobById, getEmployerJobs, updateJob, deleteJob
 } from "../controllers/jobController.js";
 import { verifyToken } from "../middlewares/authMiddleware.js";
 
@@ -15,5 +15,14 @@ router.post("/", verifyToken, createJob);
 router.get("/employer/my-jobs", verifyToken, getEmployerJobs);
 router.put("/:id", verifyToken, updateJob);
 router.delete("/:id", verifyToken, deleteJob);
+
+// Save a job
+router.post("/save-job/:jobId", verifyToken, saveJob);
+
+// Get all saved jobs of jobseeker
+router.get("/save-job", verifyToken, getSavedJobs);
+
+// Remove a saved job
+router.delete("/save-job/:jobId", verifyToken, removeSavedJob);
 
 export default router;
