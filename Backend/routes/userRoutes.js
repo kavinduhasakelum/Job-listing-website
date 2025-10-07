@@ -44,31 +44,31 @@ router.delete(
   deleteProfilePicture
     
 );
-// Job Seeker routes
-router.post(
-  "/jobseeker/details", 
-  verifyToken, 
-  upload.single("profile_picture"), 
-  createJobSeekerProfile
-);
+// // Job Seeker routes
+// router.post(
+//   "/jobseeker/details", 
+//   verifyToken, 
+//   upload.single("profile_picture"), 
+//   createJobSeekerProfile
+// );
 
-// get Job Seeker details
-router.get("/jobseeker/details", verifyToken, getJobSeekerDetails);
+// // get Job Seeker details
+// router.get("/jobseeker/details", verifyToken, getJobSeekerDetails);
 
-// Update Job Seeker Profile
-router.patch(
-  "/jobseeker/details",
-  verifyToken,
-  upload.single("profile_picture"),
-  validateJobSeekerUpdate,
-  updateJobSeekerDetails
-);
+// // Update Job Seeker Profile
+// router.patch(
+//   "/jobseeker/details",
+//   verifyToken,
+//   upload.single("profile_picture"),
+//   validateJobSeekerUpdate,
+//   updateJobSeekerDetails
+// );
 
-// Delete only Profile Picture
-router.delete(
-  "/jobseeker/profile-picture", 
-  verifyToken, 
-  deleteJobSeekerProfilePicture
-)
+// // Delete only Profile Picture
+// router.delete(
+//   "/jobseeker/profile-picture", 
+//   verifyToken, 
+//   deleteJobSeekerProfilePicture
+// )
 
 export default router;
