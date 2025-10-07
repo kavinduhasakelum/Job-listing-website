@@ -24,3 +24,10 @@ export const UPDATE_JOB = `
 export const DELETE_JOB = `
     DELETE FROM jobs WHERE job_id=? AND employer_id=?
   `;
+  // get jobs by specific company that are approved
+export const getJobsByCompanyQuery = `
+  SELECT * FROM jobs 
+  WHERE employer_id = ? 
+  AND status = 'approved'
+  ORDER BY created_at DESC
+`;

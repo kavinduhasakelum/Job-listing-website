@@ -6,10 +6,10 @@ import {
   updateEmployerDetailsQuery,
   getProfilePictureQuery,
   deleteProfilePictureQuery,
-  insertJobSeekerDetailsQuery,
-  getJobSeekerDetailsQuery,
-  updateJobSeekerDetailsQuery,
-  deleteJobSeekerProfilePictureQuery,
+  // insertJobSeekerDetailsQuery,
+  // getJobSeekerDetailsQuery,
+  // updateJobSeekerDetailsQuery,
+  // deleteJobSeekerProfilePictureQuery,
 } from "../queries/userQueries.js";
 
 // Add employer details (only once after register)

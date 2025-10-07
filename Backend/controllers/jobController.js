@@ -1,3 +1,5 @@
+
+
 import pool from "../config/dbConnection.js";
 import { 
     CREATE_JOB,
@@ -5,7 +7,8 @@ import {
     GET_JOB_BY_ID,
     GET_EMPLOYER_JOBS,
     UPDATE_JOB,
-    DELETE_JOB
+    DELETE_JOB,
+    getJobsByCompanyQuery
  } from "../queries/jobQueries.js";
 
 // Create job with salary range + logo
@@ -102,5 +105,22 @@ export const deleteJob = async (req, res) => {
     res.json({ message: "Job deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
+  }
+};
+// Get Jobs by specific Company (approved jobs only)
+export const getJobsByCompany = async (req, res) => {
+  try {
+    const { employerId } = req.params;
+
+    const [jobs] = await pool.query(getJobsByCompanyQuery, [employerId]);
+
+    if (jobs.length === 0) {
+      return res.status(404).json({ message: "No approved jobs found for this company." });
+    }
+
+    res.status(200).json(jobs);
+  } catch (error) {
+    console.error("Error fetching company jobs:", error);
+    res.status(500).json({ error: "Server error while fetching company jobs." });
   }
 };
