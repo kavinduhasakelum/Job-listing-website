@@ -70,7 +70,7 @@ function SearchAndFilter() {
         <div className="mt-6 flex justify-center">
           <Button 
             Name="Search Jobs" 
-            className="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+            className="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transform  transition-all duration-200"
           />
         </div>
       </div>
