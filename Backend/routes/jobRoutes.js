@@ -15,7 +15,7 @@ const router = express.Router();
 const upload = multer(); // For logo upload
 
 // Create Job
-router.post("/", verifyToken, isEmployer, createJob);
+router.post("/", verifyToken,  isEmployer, upload.single("company_logo"), createJob);
 
 // View Job
 router.get("/my-jobs", verifyToken, isEmployer, getJobsByEmployer);

@@ -4,10 +4,10 @@ import {
     getEmployerDetails,
     updateEmployerDetails,
     deleteProfilePicture,
-    createJobSeekerProfile,
-    getJobSeekerDetails,
-    updateJobSeekerDetails,
-    deleteJobSeekerProfilePicture,
+    // createJobSeekerProfile,
+    // getJobSeekerDetails,
+    // updateJobSeekerDetails,
+    // deleteJobSeekerProfilePicture,
 } from '../controllers/userController.js';
 import upload from '../utils/multer.js';
 import { verifyToken } from '../middlewares/authMiddleware.js';
@@ -49,6 +49,7 @@ router.delete(
   deleteProfilePicture
     
 );
+
 // // Job Seeker routes
 // router.post(
 //   "/jobseeker/details", 
