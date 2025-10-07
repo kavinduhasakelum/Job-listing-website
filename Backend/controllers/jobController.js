@@ -5,8 +5,7 @@ import {
   getJobsQuery,
   getJobByIdQuery,
   updateJobQuery,
-  deleteJobQuery,
-  getJobsByEmployerQuery
+  deleteJobQuery
 } from "../queries/jobQueries.js";
 import nodemailer from 'nodemailer';
 
@@ -239,4 +238,3 @@ if (status !== "approved" && status !== "rejected") {
     res.status(500).json({ error: 'Server error while approving job.' });
   }
 };
-
