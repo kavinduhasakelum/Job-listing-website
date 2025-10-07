@@ -21,6 +21,95 @@ import { generateToken } from '../utils/generateToken.js';
 
 const ALLOWED_ROLES = ['admin', 'employer', 'jobseeker'];
 
+const CLIENT_BASE_URL = process.env.CLIENT_URL || 'http://localhost:3000';
+const SMTP_SERVICE = process.env.SMTP_SERVICE;
+const SMTP_HOST = process.env.SMTP_HOST;
+const SMTP_PORT = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined;
+const SMTP_SECURE = typeof process.env.SMTP_SECURE === 'string'
+  ? ['true', '1', 'yes', 'on'].includes(process.env.SMTP_SECURE.toLowerCase())
+  : undefined;
+const SMTP_USER = process.env.SMTP_USER || process.env.EMAIL_USER;
+const SMTP_PASS = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
+
+let transporter = null;
+
+if (SMTP_USER && SMTP_PASS) {
+  const transportOptions = {
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASS,
+    },
+  };
+
+  if (SMTP_HOST) {
+    transportOptions.host = SMTP_HOST;
+    if (SMTP_PORT !== undefined && !Number.isNaN(SMTP_PORT)) {
+      transportOptions.port = SMTP_PORT;
+    }
+    if (typeof SMTP_SECURE === 'boolean') {
+      transportOptions.secure = SMTP_SECURE;
+    } else if (transportOptions.port === 465) {
+      transportOptions.secure = true;
+    } else if (transportOptions.port === undefined) {
+      transportOptions.port = 587;
+      transportOptions.secure = false;
+    }
+  } else {
+    transportOptions.service = (SMTP_SERVICE || 'gmail').toLowerCase();
+    if (typeof SMTP_SECURE === 'boolean') {
+      transportOptions.secure = SMTP_SECURE;
+    }
+  }
+
+  try {
+    transporter = nodemailer.createTransport(transportOptions);
+  } catch (error) {
+    console.error('Failed to initialize email transporter:', error);
+  }
+} else {
+  console.warn('Email credentials not configured. Set SMTP_USER/SMTP_PASS (or EMAIL_USER/EMAIL_PASS) to enable email delivery.');
+}
+
+const sendEmail = async ({ from, ...mailOptions }) => {
+  if (!transporter) {
+    throw new Error('Email transport not configured. Set SMTP_USER and SMTP_PASS (or EMAIL_USER and EMAIL_PASS) environment variables.');
+  }
+
+  const sender = from || SMTP_FROM || SMTP_USER;
+
+  try {
+    return await transporter.sendMail({
+      from: sender,
+      ...mailOptions,
+    });
+  } catch (error) {
+    const responseText = error?.response || error?.message || '';
+    const responseCode = error?.responseCode;
+
+    const isAuthFailure = error?.code === 'EAUTH' || responseCode === 535 || /5\.7\.[08]/i.test(responseText);
+
+    if (isAuthFailure) {
+      const usingGmail = !SMTP_HOST && (SMTP_SERVICE || 'gmail').toLowerCase() === 'gmail';
+      const hints = [];
+
+      if (usingGmail) {
+        hints.push('Gmail rejected the credentials. Enable 2-Step Verification, then create an App Password and use it as SMTP_PASS. See https://support.google.com/mail/?p=BadCredentials');
+      } else if (SMTP_HOST) {
+        hints.push(`SMTP authentication failed for host ${SMTP_HOST}. Verify the username/password and any IP allow lists.`);
+      } else {
+        hints.push('SMTP authentication failed. Double-check SMTP_USER/SMTP_PASS values.');
+      }
+
+      const authError = new Error(`Unable to send email: ${hints.join(' ')}`);
+      authError.originalError = error;
+      throw authError;
+    }
+
+    throw error;
+  }
+};
+
 export const register = async (req, res) => {
     const { name, email, password, role } = req.body;
 
@@ -34,29 +123,32 @@ export const register = async (req, res) => {
         return res.status(400).json({ error: `Invalid role. Allowed roles: ${ALLOWED_ROLES.join(', ')}` });
     }
 
-    try {
-        // Check if user already exists
-        const [existing] = await pool.query(FIND_USER_BY_EMAIL, [email]);
-        if (existing.length > 0) {
-            return res.status(409).json({ error: 'User already exists' });
-        }
-
-        const hashed = await hashPassword(password);
-        await pool.query(CREATE_USER, [name, email, hashed, normalizedRole]);
-
-        res.status(201).json({ message: 'User registered successfully. A verification email has been sent. Please check your inbox and click the verification link to activate your account.' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+  try {
+    // Check if user already exists
+    const [existing] = await pool.query(FIND_USER_BY_EMAIL, [email]);
+    if (existing.length > 0) {
+      return res.status(409).json({ error: 'User already exists' });
     }
-    const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: "1d" });
-    const verifyLink = `${process.env.CLIENT_URL}/auth/verify-email?token=${token}`;
-    
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+
+    const hashed = await hashPassword(password);
+    await pool.query(CREATE_USER, [name, email, hashed, normalizedRole]);
+
+    const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    const verifyLink = `${CLIENT_BASE_URL}/auth/verify-email?token=${token}`;
+
+    await sendEmail({
       to: email,
-      subject: "Verify your email",
+      subject: 'Verify your email',
       html: `<p>Click <a href="${verifyLink}">here</a> to verify your email.</p>`,
     });
+
+    return res.status(201).json({
+      message: 'User registered successfully. A verification email has been sent. Please check your inbox and click the verification link to activate your account.',
+    });
+  } catch (err) {
+    console.error('Register error:', err);
+    return res.status(500).json({ error: err.message || 'Something went wrong during registration' });
+  }
 };
 
 
@@ -218,15 +310,6 @@ export const hardDeleteUser = async (req, res) => {
     }
 };
 
-// Send email helper
-const transporter = nodemailer.createTransport({
-  service: "Gmail", // or your SMTP provider
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
-
 // Send verification email
 export const sendVerificationEmail = async (req, res) => {
   try {
@@ -246,11 +329,9 @@ export const sendVerificationEmail = async (req, res) => {
     const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
     // Backend API verification link
-    const link = `http://localhost:3000/auth/verify-email?token=${token}`;
+    const link = `${CLIENT_BASE_URL}/auth/verify-email?token=${token}`;
 
-    // Send mail
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+    await sendEmail({
       to: email,
       subject: "Verify your email",
       html: `<p>Click <a href="${link}">here</a> to verify your email.</p>`,
@@ -315,10 +396,9 @@ export const forgotPassword = async (req, res) => {
       { expiresIn: "15m" }
     );
 
-    const resetLink = `${process.env.CLIENT_URL}/auth/reset-password?token=${token}`;
+    const resetLink = `${CLIENT_BASE_URL}/auth/reset-password?token=${token}`;
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+    await sendEmail({
       to: normalizedEmail,
       subject: "Password Reset",
       html: `<p>Click <a href="${resetLink}">here</a> to reset your password.</p>`,
