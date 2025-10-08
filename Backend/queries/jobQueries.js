@@ -1,6 +1,6 @@
 export const CREATE_JOB = `
-    INSERT INTO jobs (employer_id, title, description, location, salary, job_type)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO jobs (employer_id, title, description, location, salary, job_type, company_logo)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
 
 export const GET_ALL_JOBS = `

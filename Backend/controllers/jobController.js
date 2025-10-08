@@ -1,25 +1,48 @@
 import pool from "../config/dbConnection.js";
-import { 
-    CREATE_JOB,
-    GET_ALL_JOBS,
-    GET_JOB_BY_ID,
-    GET_EMPLOYER_JOBS,
-    UPDATE_JOB,
-    DELETE_JOB
- } from "../queries/jobQueries.js";
+import {
+  CREATE_JOB,
+  GET_ALL_JOBS,
+  GET_JOB_BY_ID,
+  GET_EMPLOYER_JOBS,
+  UPDATE_JOB,
+  DELETE_JOB,
+} from "../queries/jobQueries.js";
 
 // Create job with salary range + logo
 export const createJob = async (req, res) => {
   try {
+    if (!req.body) {
+      return res
+        .status(400)
+        .json({ error: "Request body is required to create a job" });
+    }
+
     const { title, description, location, salary_min, salary_max } = req.body;
+
+    if (!title || !description || !location) {
+      return res.status(400).json({
+        error: "title, description, and location are required fields",
+      });
+    }
+
     const employer_id = req.user.id; // from token
     const company_logo = req.file ? `/uploads/${req.file.filename}` : null;
 
+    const jobType= req.body.job_type || "Full-time"; // Default to Full-time if not provided
+
     const [result] = await pool.query(CREATE_JOB, [
-      title, description, location, salary_min, salary_max, company_logo, employer_id,
+      employer_id,
+      title,
+      description,
+      location,
+      salary_max,
+      jobType,
+      company_logo,
     ]);
 
-    res.status(201).json({ message: "Job created successfully", jobId: result.insertId });
+    res
+      .status(201)
+      .json({ message: "Job created successfully", jobId: result.insertId });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -53,7 +76,9 @@ export const getJobById = async (req, res) => {
 // Employer’s Jobs
 export const getEmployerJobs = async (req, res) => {
   try {
-    const [jobs] = await pool.query(JOB_QUERIES.GET_EMPLOYER_JOBS, [req.params.id]);
+    const [jobs] = await pool.query(JOB_QUERIES.GET_EMPLOYER_JOBS, [
+      req.params.id,
+    ]);
     res.json(jobs);
   } catch (err) {
     res.status(500).json({ error: "Server error" });

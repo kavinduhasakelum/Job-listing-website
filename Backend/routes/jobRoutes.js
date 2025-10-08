@@ -1,8 +1,14 @@
 import express from "express";
-import { 
-  createJob, getAllJobs, getJobById, getEmployerJobs, updateJob, deleteJob
+import {
+  createJob,
+  getAllJobs,
+  getJobById,
+  getEmployerJobs,
+  updateJob,
+  deleteJob,
 } from "../controllers/jobController.js";
 import { verifyToken } from "../middlewares/authMiddleware.js";
+import upload from "../utils/multer.js";
 
 const router = express.Router();
 
@@ -11,7 +17,12 @@ router.get("/", getAllJobs);
 router.get("/:id", getJobById);
 
 // Employer protected
-router.post("/", verifyToken, createJob);
+router.post(
+  "/create",
+  verifyToken,
+  upload.single("company_logo"),
+  createJob
+);
 router.get("/employer/my-jobs", verifyToken, getEmployerJobs);
 router.put("/:id", verifyToken, updateJob);
 router.delete("/:id", verifyToken, deleteJob);
