@@ -1,14 +1,29 @@
 import pool from "../config/dbConnection.js";
+import cloudinary from "../utils/cloudinary.js";
 import {
-  CREATE_JOB,
-  GET_ALL_JOBS,
-  GET_JOB_BY_ID,
-  GET_EMPLOYER_JOBS,
-  UPDATE_JOB,
-  DELETE_JOB,
+  insertJobQuery,
+  getJobsQuery,
+  getJobByIdQuery,
+  updateJobQuery,
+  deleteJobQuery,
+  getJobsByEmployerQuery,
 } from "../queries/jobQueries.js";
+import { sendEmail } from "../utils/emailClient.js";
 
-// Create job with salary range + logo
+const uploadFromBuffer = (fileBuffer, folder) =>
+  new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder },
+      (error, result) => {
+        if (error) {
+          return reject(error);
+        }
+        resolve(result);
+      }
+    );
+    stream.end(fileBuffer);
+  });
+
 export const createJob = async (req, res) => {
   try {
     if (!req.body) {
@@ -17,51 +32,86 @@ export const createJob = async (req, res) => {
         .json({ error: "Request body is required to create a job" });
     }
 
-    const { title, description, location, salary_min, salary_max } = req.body;
+    const employerId = req.user.id;
 
-    if (!title || !description || !location) {
-      return res.status(400).json({
-        error: "title, description, and location are required fields",
-      });
+    const [profile] = await pool.query(
+      "SELECT * FROM employer WHERE user_id = ?",
+      [employerId]
+    );
+
+    if (profile.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "Please complete your employer profile first." });
     }
 
-    const employer_id = req.user.id; // from token
-    const company_logo = req.file ? `/uploads/${req.file.filename}` : null;
-
-    const jobType= req.body.job_type || "Full-time"; // Default to Full-time if not provided
-
-    const [result] = await pool.query(CREATE_JOB, [
-      employer_id,
+    const {
       title,
       description,
       location,
+      work_type,
+      job_type,
+      experience_level,
+      industry,
+      salary_min,
       salary_max,
-      jobType,
-      company_logo,
+    } = req.body;
+
+    if (!title || !description || !location || !industry) {
+      return res.status(400).json({ error: "Required fields missing" });
+    }
+
+    if (salary_min === undefined || salary_max === undefined) {
+      return res
+        .status(400)
+        .json({ error: "Salary range (salary_min, salary_max) is required" });
+    }
+
+    let logoUrl = null;
+    if (req.file) {
+      const uploadResult = await uploadFromBuffer(
+        req.file.buffer,
+        "company/logos"
+      );
+      logoUrl = uploadResult.secure_url;
+    }
+
+    await pool.query(insertJobQuery, [
+      employerId,
+      title.trim(),
+      description,
+      location,
+      (work_type || "onsite").toLowerCase(),
+      (job_type || "full-time").toLowerCase(),
+      (experience_level || "entry").toLowerCase(),
+      industry,
+      salary_min,
+      salary_max,
+      logoUrl,
     ]);
 
-    res
-      .status(201)
-      .json({ message: "Job created successfully", jobId: result.insertId });
+    res.status(201).json({
+      message: "Job created successfully and waiting for admin approval.",
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Create job error:", err);
+    res.status(500).json({ error: "Server error while creating job" });
   }
 };
 
-// Get All Jobs
 export const getAllJobs = async (req, res) => {
   try {
-    const [jobs] = await pool.query(JOB_QUERIES.GET_ALL_JOBS);
+    const [jobs] = await pool.query(getJobsQuery);
     res.json(jobs);
   } catch (err) {
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error while fetching jobs" });
   }
 };
 
-// Get Job by ID
 export const getJobById = async (req, res) => {
   try {
-    const [job] = await pool.query(JOB_QUERIES.GET_JOB_BY_ID, [req.params.id]);
+    const { id } = req.params;
+    const [job] = await pool.query(getJobByIdQuery, [id]);
 
     if (job.length === 0) {
       return res.status(404).json({ error: "Job not found" });
@@ -69,63 +119,142 @@ export const getJobById = async (req, res) => {
 
     res.json(job[0]);
   } catch (err) {
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error while fetching job" });
   }
 };
 
-// Employer’s Jobs
-export const getEmployerJobs = async (req, res) => {
+export const getJobsByEmployer = async (req, res) => {
   try {
-    const [jobs] = await pool.query(JOB_QUERIES.GET_EMPLOYER_JOBS, [
-      req.params.id,
-    ]);
+    const employerId = req.user.id;
+    const [jobs] = await pool.query(getJobsByEmployerQuery, [employerId]);
     res.json(jobs);
   } catch (err) {
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error while fetching jobs" });
   }
 };
 
-// Update Job
 export const updateJob = async (req, res) => {
   try {
     const { id } = req.params;
     const employerId = req.user.id;
-    const { title, description, location, salary, job_type } = req.body;
 
-    const [result] = await pool.query(JOB_QUERIES.UPDATE_JOB, [
-      title,
-      description,
-      location,
-      salary,
-      job_type,
-      id,
-      employerId,
-    ]);
+    const fields = [];
+    const values = [];
 
-    if (result.affectedRows === 0) {
-      return res.status(403).json({ error: "Not authorized or job not found" });
+    if (req.file) {
+      const uploadResult = await uploadFromBuffer(
+        req.file.buffer,
+        "company/logos"
+      );
+      fields.push("company_logo=?");
+      values.push(uploadResult.secure_url);
     }
 
-    res.json({ message: "Job updated successfully" });
+    const editableFields = [
+      "title",
+      "description",
+      "location",
+      "work_type",
+      "job_type",
+      "experience_level",
+      "industry",
+      "salary_min",
+      "salary_max",
+    ];
+
+    editableFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        fields.push(`${field}=?`);
+        values.push(req.body[field]);
+      }
+    });
+
+    if (fields.length === 0) {
+      return res.status(400).json({ error: "No fields provided to update" });
+    }
+
+    const query = updateJobQuery(fields);
+    values.push(id, employerId);
+
+    const [result] = await pool.query(query, values);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Job not found" });
+    }
+
+    res.status(200).json({
+      message: "Job updated successfully and waiting for admin approval.",
+    });
   } catch (err) {
-    res.status(500).json({ error: "Server error" });
+    console.error("Update job error:", err);
+    res.status(500).json({ error: "Server error while updating job" });
   }
 };
 
-// Delete Job
 export const deleteJob = async (req, res) => {
   try {
-    const { id } = req.params;
     const employerId = req.user.id;
+    const { id } = req.params;
 
-    const [result] = await pool.query(JOB_QUERIES.DELETE_JOB, [id, employerId]);
+    const [result] = await pool.query(deleteJobQuery, [id, employerId]);
 
     if (result.affectedRows === 0) {
-      return res.status(403).json({ error: "Not authorized or job not found" });
+      return res
+        .status(404)
+        .json({ error: "Job not found or not authorized" });
     }
 
     res.json({ message: "Job deleted successfully" });
   } catch (err) {
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error while deleting job" });
+  }
+};
+
+export const approveJob = async (req, res) => {
+  const { jobId } = req.params;
+  const { status } = req.body;
+
+  if (status !== "approved" && status !== "rejected") {
+    return res.status(400).json({
+      error: "Invalid status. Use approved or rejected.",
+    });
+  }
+
+  try {
+    const [jobs] = await pool.query(
+      "SELECT * FROM jobs WHERE job_id = ?",
+      [jobId]
+    );
+
+    if (jobs.length === 0) {
+      return res.status(404).json({ error: "Job not found" });
+    }
+
+    await pool.query("UPDATE jobs SET status = ? WHERE job_id = ?", [
+      status,
+      jobId,
+    ]);
+
+    const [employer] = await pool.query(
+      "SELECT email FROM users WHERE user_id = ?",
+      [jobs[0].employer_id]
+    );
+
+    if (employer.length > 0) {
+      await sendEmail({
+        to: employer[0].email,
+        subject: `Your job "${jobs[0].title}" has been ${status}`,
+        text: `Hello, your job posting "${jobs[0].title}" has been ${status} by the admin.`,
+      });
+    }
+
+    res.status(200).json({
+      message: `Job ${status} successfully${
+        employer.length > 0 ? " and email sent to employer" : ""
+      }.`,
+    });
+  } catch (err) {
+    console.error("Approve job error:", err);
+    res.status(500).json({ error: "Server error while approving job" });
   }
 };
