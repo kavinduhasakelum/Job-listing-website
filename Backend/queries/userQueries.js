@@ -27,3 +27,4 @@ export const getProfilePictureQuery = `
 export const deleteProfilePictureQuery = `
   UPDATE employer SET profile_picture = NULL WHERE user_id = ?
 `;
+
