@@ -49,6 +49,7 @@ router.delete(
   deleteProfilePicture
     
 );
+
 // // Job Seeker routes
 // router.post(
 //   "/jobseeker/details", 
