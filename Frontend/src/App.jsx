@@ -5,7 +5,10 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 
 // Protected Route Components
-import ProtectedRoute, { AdminRoute, EmployerRoute } from "./components/ProtectedRoute";
+import ProtectedRoute, {
+  AdminRoute,
+  EmployerRoute,
+} from "./components/ProtectedRoute";
 
 // Pages (add or keep existing ones)
 import Root from "./pages/Root";
@@ -24,36 +27,36 @@ const router = createBrowserRouter([
     path: "/",
     element: <Root />, // layout with NavBar + Footer + <Outlet />
     children: [
-      { 
-        index: true, 
+      {
+        index: true,
         element: (
           <ProtectedRoute>
             <HomePage />
           </ProtectedRoute>
-        ) 
+        ),
       },
       { path: "job", element: <JobView /> },
       { path: "jobs", element: <SearchJob /> },
       { path: "register", element: <RegisterLogin /> },
-      { 
-        path: "postjob", 
+      {
+        path: "post-job",
         element: (
           <EmployerRoute>
             <JobPostForm />
           </EmployerRoute>
-        ) 
-      },
+        ),
+      }, 
       { path: "search", element: <SearchJob /> },
-      { 
-        path: "chat", 
+      {
+        path: "chat",
         element: (
           <ProtectedRoute>
             <ChatPage />
           </ProtectedRoute>
-        ) 
+        ),
       },
       { path: "find-jobs", element: <FindJobsPage /> },
-      { path: "about", element: <AboutUs /> }, // <-- ABOUT ROUTE
+      { path: "about", element: <AboutUs /> }, 
     ],
   },
   {

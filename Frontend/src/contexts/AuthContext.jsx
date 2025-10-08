@@ -1,20 +1,27 @@
-import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo } from 'react';
-import axios from 'axios';
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
+import axios from "axios";
 
 // Auth action types
 const AUTH_ACTIONS = {
-  SET_LOADING: 'SET_LOADING',
-  LOGIN_SUCCESS: 'LOGIN_SUCCESS',
-  LOGOUT: 'LOGOUT',
-  SET_ERROR: 'SET_ERROR',
-  CLEAR_ERROR: 'CLEAR_ERROR',
-  SET_USER: 'SET_USER',
+  SET_LOADING: "SET_LOADING",
+  LOGIN_SUCCESS: "LOGIN_SUCCESS",
+  LOGOUT: "LOGOUT",
+  SET_ERROR: "SET_ERROR",
+  CLEAR_ERROR: "CLEAR_ERROR",
+  SET_USER: "SET_USER",
 };
 
 // Initial auth state
 const initialState = {
   user: null,
-  token: localStorage.getItem('token'),
+  token: localStorage.getItem("token"),
   isAuthenticated: false,
   loading: true,
   error: null,
@@ -73,7 +80,8 @@ function authReducer(state, action) {
 const AuthContext = createContext();
 
 // API base URL constant (outside component to prevent re-creation)
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 // Auth Provider component
 export const AuthProvider = ({ children }) => {
@@ -82,19 +90,19 @@ export const AuthProvider = ({ children }) => {
   // Set axios default headers
   useEffect(() => {
     if (state.token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${state.token}`;
-      localStorage.setItem('token', state.token);
+      axios.defaults.headers.common["Authorization"] = `Bearer ${state.token}`;
+      localStorage.setItem("token", state.token);
     } else {
-      delete axios.defaults.headers.common['Authorization'];
-      localStorage.removeItem('token');
+      delete axios.defaults.headers.common["Authorization"];
+      localStorage.removeItem("token");
     }
   }, [state.token]);
 
   // Check if user is authenticated on app start
   useEffect(() => {
     const initializeAuth = async () => {
-      const token = localStorage.getItem('token');
-      
+      const token = localStorage.getItem("token");
+
       if (!token) {
         dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
         return;
@@ -102,9 +110,9 @@ export const AuthProvider = ({ children }) => {
 
       try {
         // Verify token with backend
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
         const response = await axios.get(`${API_BASE_URL}/auth/verify`);
-        
+
         dispatch({
           type: AUTH_ACTIONS.LOGIN_SUCCESS,
           payload: {
@@ -114,8 +122,8 @@ export const AuthProvider = ({ children }) => {
         });
       } catch {
         // Token is invalid, remove it
-        localStorage.removeItem('token');
-        delete axios.defaults.headers.common['Authorization'];
+        localStorage.removeItem("token");
+        delete axios.defaults.headers.common["Authorization"];
         dispatch({ type: AUTH_ACTIONS.LOGOUT });
       }
     };
@@ -143,11 +151,11 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true, message };
     } catch (error) {
-      const errorMessage = 
-        error.response?.data?.error || 
-        error.response?.data?.message || 
-        'Login failed. Please try again.';
-      
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Login failed. Please try again.";
+
       dispatch({
         type: AUTH_ACTIONS.SET_ERROR,
         payload: errorMessage,
@@ -155,7 +163,7 @@ export const AuthProvider = ({ children }) => {
 
       return { success: false, error: errorMessage };
     }
-  }, []);  // Empty dependency array for useCallback
+  }, []); // Empty dependency array for useCallback
 
   // Register function
   const register = useCallback(async (userData) => {
@@ -163,18 +171,23 @@ export const AuthProvider = ({ children }) => {
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
       dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
 
-      const response = await axios.post(`${API_BASE_URL}/auth/register`, userData);
+      const response = await axios.post(
+        `${API_BASE_URL}/auth/register`,
+        userData
+      );
 
-      return { 
-        success: true, 
-        message: response.data?.message || 'Registration successful. Please verify your email.' 
+      return {
+        success: true,
+        message:
+          response.data?.message ||
+          "Registration successful. Please verify your email.",
       };
     } catch (error) {
-      const errorMessage = 
-        error.response?.data?.error || 
-        error.response?.data?.message || 
-        'Registration failed. Please try again.';
-      
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Registration failed. Please try again.";
+
       dispatch({
         type: AUTH_ACTIONS.SET_ERROR,
         payload: errorMessage,
@@ -184,22 +197,25 @@ export const AuthProvider = ({ children }) => {
     } finally {
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
     }
-  }, []);  // Empty dependency array for useCallback
+  }, []); // Empty dependency array for useCallback
 
   // Logout function
   const logout = useCallback(() => {
-    localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
+    localStorage.removeItem("token");
+    delete axios.defaults.headers.common["Authorization"];
     dispatch({ type: AUTH_ACTIONS.LOGOUT });
   }, []);
 
   // Update user profile
-  const updateUser = useCallback((userData) => {
-    dispatch({
-      type: AUTH_ACTIONS.SET_USER,
-      payload: { ...state.user, ...userData },
-    });
-  }, [state.user]);
+  const updateUser = useCallback(
+    (userData) => {
+      dispatch({
+        type: AUTH_ACTIONS.SET_USER,
+        payload: { ...state.user, ...userData },
+      });
+    },
+    [state.user]
+  );
 
   // Clear error
   const clearError = useCallback(() => {
@@ -207,68 +223,73 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Check if user has specific role
-  const hasRole = useCallback((role) => {
-    return state.user?.role?.toLowerCase() === role.toLowerCase();
-  }, [state.user?.role]);
+  const hasRole = useCallback(
+    (role) => {
+      return state.user?.role?.toLowerCase() === role.toLowerCase();
+    },
+    [state.user?.role]
+  );
 
   // Check if user has any of the specified roles
-  const hasAnyRole = useCallback((roles) => {
-    return roles.some(role => hasRole(role));
-  }, [hasRole]);
+  const hasAnyRole = useCallback(
+    (roles) => {
+      return roles.some((role) => hasRole(role));
+    },
+    [hasRole]
+  );
 
   // Check if user is admin
-  const isAdmin = useCallback(() => hasRole('admin'), [hasRole]);
+  const isAdmin = useCallback(() => hasRole("admin"), [hasRole]);
 
   // Check if user is employer
-  const isEmployer = useCallback(() => hasRole('employer'), [hasRole]);
+  const isEmployer = useCallback(() => hasRole("employer"), [hasRole]);
 
   // Check if user is job seeker
-  const isJobSeeker = useCallback(() => hasRole('jobseeker'), [hasRole]);
+  const isJobSeeker = useCallback(() => hasRole("jobseeker"), [hasRole]);
 
   // Memoize the context value to prevent unnecessary re-renders
-  const value = useMemo(() => ({
-    // State
-    ...state,
-    
-    // Methods
-    login,
-    register,
-    logout,
-    updateUser,
-    clearError,
-    
-    // Role checks
-    hasRole,
-    hasAnyRole,
-    isAdmin,
-    isEmployer,
-    isJobSeeker,
-  }), [
-    state,
-    login,
-    register,
-    logout,
-    updateUser,
-    clearError,
-    hasRole,
-    hasAnyRole,
-    isAdmin,
-    isEmployer,
-    isJobSeeker,
-  ]);
+  const value = useMemo(
+    () => ({
+      // State
+      ...state,
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
+      // Methods
+      login,
+      register,
+      logout,
+      updateUser,
+      clearError,
+
+      // Role checks
+      hasRole,
+      hasAnyRole,
+      isAdmin,
+      isEmployer,
+      isJobSeeker,
+    }),
+    [
+      state,
+      login,
+      register,
+      logout,
+      updateUser,
+      clearError,
+      hasRole,
+      hasAnyRole,
+      isAdmin,
+      isEmployer,
+      isJobSeeker,
+    ]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 // Custom hook to use auth context
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };

@@ -106,7 +106,7 @@ function NavBar() {
               {(isEmployer() || isAdmin()) && (
                 <button
                   type="button"
-                  onClick={() => navigate('/postjob')}
+                  onClick={() => navigate('/post-job')}
                   className="h-10 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-medium hover:opacity-90 hover:scale-105 shadow-md transition-transform duration-300"
                 >
                   Post a Job
