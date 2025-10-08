@@ -1,3 +1,4 @@
+
 import express from "express";
 import { verifyToken, isAdmin, isEmployer} from "../middlewares/authMiddleware.js";
 import multer from "multer";
@@ -33,4 +34,6 @@ router.get("/:id", getJobById); // View job details (only if approved)
 // Admin approves a job
 router.put('/approve/:jobId', verifyToken, isAdmin, approveJob);
 
+// View all approved jobs by a company (Public)
+router.get("/company/:employerId", getJobsByCompany);
 export default router;

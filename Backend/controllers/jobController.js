@@ -1,3 +1,5 @@
+
+
 import pool from "../config/dbConnection.js";
 import cloudinary from "../utils/cloudinary.js";
 import {
@@ -236,5 +238,22 @@ if (status !== "approved" && status !== "rejected") {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Server error while approving job.' });
+  }
+};
+// Get Jobs by specific Company (approved jobs only)
+export const getJobsByCompany = async (req, res) => {
+  try {
+    const { employerId } = req.params;
+
+    const [jobs] = await pool.query(getJobsByCompanyQuery, [employerId]);
+
+    if (jobs.length === 0) {
+      return res.status(404).json({ message: "No approved jobs found for this company." });
+    }
+
+    res.status(200).json(jobs);
+  } catch (error) {
+    console.error("Error fetching company jobs:", error);
+    res.status(500).json({ error: "Server error while fetching company jobs." });
   }
 };
