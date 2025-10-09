@@ -10,6 +10,7 @@ import {
   deleteJobRecord,
   findJobById,
   updateJobStatus,
+  findApprovedJobsByCompany,
 } from "../models/jobModel.js";
 import { findEmployerProfileByUserId } from "../models/employerModel.js";
 import { findUserEmailById } from "../models/userModel.js";
@@ -102,8 +103,8 @@ export const createJob = async (req, res) => {
 
 export const getAllJobs = async (req, res) => {
   try {
-  const jobs = await findApprovedJobs();
-  res.json(jobs);
+    const jobs = await findApprovedJobs();
+    res.json(jobs);
   } catch (err) {
     res.status(500).json({ error: "Server error while fetching jobs" });
   }
@@ -126,9 +127,9 @@ export const getJobById = async (req, res) => {
 
 export const getJobsByEmployer = async (req, res) => {
   try {
-  const employerId = req.user.id;
-  const jobs = await findJobsByEmployerId(employerId);
-  res.json(jobs);
+    const employerId = req.user.id;
+    const jobs = await findJobsByEmployerId(employerId);
+    res.json(jobs);
   } catch (err) {
     res.status(500).json({ error: "Server error while fetching jobs" });
   }
