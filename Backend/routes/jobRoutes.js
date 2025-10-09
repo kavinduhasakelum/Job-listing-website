@@ -1,3 +1,4 @@
+
 import express from "express";
 import {
   createJob,
@@ -42,4 +43,6 @@ router.put("/approve/:jobId", verifyToken, isAdmin, approveJob);
 router.get("/", getAllJobs);
 router.get("/:id", getJobById);
 
+// View all approved jobs by a company (Public)
+router.get("/company/:employerId", getJobsByCompany);
 export default router;
