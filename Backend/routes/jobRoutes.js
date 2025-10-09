@@ -1,38 +1,47 @@
 
 import express from "express";
-import { verifyToken, isAdmin, isEmployer} from "../middlewares/authMiddleware.js";
-import multer from "multer";
 import {
   createJob,
   getAllJobs,
   getJobById,
+  getJobsByEmployer,
   updateJob,
   deleteJob,
-  getJobsByEmployer,
-  approveJob
+  approveJob,
 } from "../controllers/jobController.js";
+import {
+  verifyToken,
+  isAdmin,
+  isEmployer,
+} from "../middlewares/authMiddleware.js";
+import upload from "../utils/multer.js";
 
 const router = express.Router();
-const upload = multer(); // For logo upload
 
-// Create Job
-router.post("/", verifyToken,  isEmployer, upload.single("company_logo"), createJob);
+router.post(
+  "/create",
+  verifyToken,
+  isEmployer,
+  upload.single("company_logo"),
+  createJob
+);
 
-// View Job
 router.get("/my-jobs", verifyToken, isEmployer, getJobsByEmployer);
 
-// Update Job
-router.put("/:id", verifyToken, isEmployer, upload.single("company_logo"), updateJob);
+router.put(
+  "/:id",
+  verifyToken,
+  isEmployer,
+  upload.single("company_logo"),
+  updateJob
+);
 
-// Delete Job
 router.delete("/:id", verifyToken, isEmployer, deleteJob);
 
-// Public routes
-router.get("/", getAllJobs); // Show only approved jobs
-router.get("/:id", getJobById); // View job details (only if approved)
+router.put("/approve/:jobId", verifyToken, isAdmin, approveJob);
 
-// Admin approves a job
-router.put('/approve/:jobId', verifyToken, isAdmin, approveJob);
+router.get("/", getAllJobs);
+router.get("/:id", getJobById);
 
 // View all approved jobs by a company (Public)
 router.get("/company/:employerId", getJobsByCompany);

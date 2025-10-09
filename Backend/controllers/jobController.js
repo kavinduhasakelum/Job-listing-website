@@ -1,30 +1,51 @@
-
-
 import pool from "../config/dbConnection.js";
 import cloudinary from "../utils/cloudinary.js";
+import { sendEmail } from "../utils/emailClient.js";
 import {
-  insertJobQuery,
-  getJobsQuery,
-  getJobByIdQuery,
-  updateJobQuery,
-  deleteJobQuery
-} from "../queries/jobQueries.js";
-import nodemailer from 'nodemailer';
+  createJobRecord,
+  findApprovedJobs,
+  findApprovedJobById,
+  findJobsByEmployerId,
+  updateJobRecord,
+  deleteJobRecord,
+  findJobById,
+  updateJobStatus,
+} from "../models/jobModel.js";
+import { findEmployerProfileByUserId } from "../models/employerModel.js";
+import { findUserEmailById } from "../models/userModel.js";
 
-// Create Job
+const uploadFromBuffer = (fileBuffer, folder) =>
+  new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder },
+      (error, result) => {
+        if (error) {
+          return reject(error);
+        }
+        resolve(result);
+      }
+    );
+    stream.end(fileBuffer);
+  });
+
 export const createJob = async (req, res) => {
   try {
+    if (!req.body) {
+      return res
+        .status(400)
+        .json({ error: "Request body is required to create a job" });
+    }
+
     const employerId = req.user.id;
 
-    // Check if employer profile exists
-    const [profile] = await pool.query(
-      "SELECT * FROM employer WHERE user_id = ?",
-      [employerId]
-    );
+    const profile = await findEmployerProfileByUserId(employerId);
 
     if (profile.length === 0) {
-      return res.status(400).json({ error: "Please complete your employer profile first." });
+      return res
+        .status(400)
+        .json({ error: "Please complete your employer profile first." });
     }
+
     const {
       title,
       description,
@@ -37,102 +58,112 @@ export const createJob = async (req, res) => {
       salary_max,
     } = req.body;
 
-    if (!title || !description || !location || !industry || !salary_min || !salary_max) {
+    if (!title || !description || !location || !industry) {
       return res.status(400).json({ error: "Required fields missing" });
+    }
+
+    if (salary_min === undefined || salary_max === undefined) {
+      return res
+        .status(400)
+        .json({ error: "Salary range (salary_min, salary_max) is required" });
     }
 
     let logoUrl = null;
     if (req.file) {
-      const uploadFromBuffer = (fileBuffer) =>
-        new Promise((resolve, reject) => {
-          const stream = cloudinary.uploader.upload_stream(
-            { folder: "company/logos" },
-            (error, result) => {
-              if (error) return reject(error);
-              resolve(result);
-            }
-          );
-          stream.end(fileBuffer);
-        });
-
-      const result = await uploadFromBuffer(req.file.buffer);
-      logoUrl = result.secure_url;
+      const uploadResult = await uploadFromBuffer(
+        req.file.buffer,
+        "company/logos"
+      );
+      logoUrl = uploadResult.secure_url;
     }
 
-    await pool.query(insertJobQuery, [
+    await createJobRecord([
       employerId,
-      title,
+      title.trim(),
       description,
       location,
-      work_type || "onsite",
-      job_type || "full-time",
-      experience_level || "entry",
+      (work_type || "onsite").toLowerCase(),
+      (job_type || "full-time").toLowerCase(),
+      (experience_level || "entry").toLowerCase(),
       industry,
       salary_min,
       salary_max,
       logoUrl,
     ]);
 
-    res.json({ message: "Job created successfully and waiting for admin approval." });
+    res.status(201).json({
+      message: "Job created successfully and waiting for admin approval.",
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Create job error:", err);
+    res.status(500).json({ error: "Server error while creating job" });
   }
 };
 
-// Get All Jobs
 export const getAllJobs = async (req, res) => {
   try {
-    const [jobs] = await pool.query(getJobsQuery);
-    res.json(jobs);
+  const jobs = await findApprovedJobs();
+  res.json(jobs);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Server error while fetching jobs" });
   }
 };
 
-// Get Job by ID
 export const getJobById = async (req, res) => {
   try {
     const { id } = req.params;
-    const [job] = await pool.query(getJobByIdQuery, [id]);
+    const job = await findApprovedJobById(id);
 
     if (job.length === 0) {
       return res.status(404).json({ error: "Job not found" });
     }
+
     res.json(job[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Server error while fetching job" });
   }
 };
 
-// Update Job
+export const getJobsByEmployer = async (req, res) => {
+  try {
+  const employerId = req.user.id;
+  const jobs = await findJobsByEmployerId(employerId);
+  res.json(jobs);
+  } catch (err) {
+    res.status(500).json({ error: "Server error while fetching jobs" });
+  }
+};
+
 export const updateJob = async (req, res) => {
   try {
     const { id } = req.params;
+    const employerId = req.user.id;
+
     const fields = [];
     const values = [];
 
-    // Upload logo if exists
     if (req.file) {
-      const uploadFromBuffer = (fileBuffer) =>
-        new Promise((resolve, reject) => {
-          const stream = cloudinary.uploader.upload_stream(
-            { folder: "company_logos" },
-            (error, result) => {
-              if (error) return reject(error);
-              resolve(result);
-            }
-          );
-          stream.end(fileBuffer);
-        });
-
-      const result = await uploadFromBuffer(req.file.buffer);
+      const uploadResult = await uploadFromBuffer(
+        req.file.buffer,
+        "company/logos"
+      );
       fields.push("company_logo=?");
-      values.push(result.secure_url); // store the Cloudinary URL
+      values.push(uploadResult.secure_url);
     }
 
-    // Add other fields dynamically
-    const bodyFields = ["title", "description", "location", "work_type", "job_type", "experience_level", "industry", "salary_min", "salary_max"];
-    bodyFields.forEach((field) => {
+    const editableFields = [
+      "title",
+      "description",
+      "location",
+      "work_type",
+      "job_type",
+      "experience_level",
+      "industry",
+      "salary_min",
+      "salary_max",
+    ];
+
+    editableFields.forEach((field) => {
       if (req.body[field] !== undefined) {
         fields.push(`${field}=?`);
         values.push(req.body[field]);
@@ -143,101 +174,77 @@ export const updateJob = async (req, res) => {
       return res.status(400).json({ error: "No fields provided to update" });
     }
 
-    values.push(id, req.user.id); // job_id and employer_id for WHERE clause
-
-    const query = `
-      UPDATE jobs
-      SET ${fields.join(", ")}, status='pending'
-      WHERE job_id=? AND employer_id=?
-    `;
-
-    const [result] = await pool.query(query, values);
+  const result = await updateJobRecord(fields, values, id, employerId);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: "Job not found" });
     }
 
-    res.status(200).json({ message: "Job updated successfully and waiting for admin approval." });
+    res.status(200).json({
+      message: "Job updated successfully and waiting for admin approval.",
+    });
   } catch (err) {
     console.error("Update job error:", err);
     res.status(500).json({ error: "Server error while updating job" });
   }
 };
 
-// Delete Job
 export const deleteJob = async (req, res) => {
   try {
-    const employerId = req.user.id;
-    const { id } = req.params;
+  const employerId = req.user.id;
+  const { id } = req.params;
 
-    const [result] = await pool.query(deleteJobQuery, [id, employerId]);
+  const result = await deleteJobRecord(id, employerId);
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Job not found or not authorized" });
+      return res
+        .status(404)
+        .json({ error: "Job not found or not authorized" });
     }
 
     res.json({ message: "Job deleted successfully" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Server error while deleting job" });
   }
 };
 
-// Get Jobs by Employer
-export const getJobsByEmployer = async (req, res) => {
-  try {
-    const employerId = req.user.id;
-    const [jobs] = await pool.query(getJobsByEmployerQuery, [employerId]);
-    res.json(jobs);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// Approve or reject job (admin only)
 export const approveJob = async (req, res) => {
   const { jobId } = req.params;
-  const { status } = req.body; // 'approved' or 'rejected'
+  const { status } = req.body;
 
-if (status !== "approved" && status !== "rejected") {
-  return res.status(400).json({ error: "Invalid status. Use approved or rejected." });
-}
+  if (status !== "approved" && status !== "rejected") {
+    return res.status(400).json({
+      error: "Invalid status. Use approved or rejected.",
+    });
+  }
 
   try {
-    const [jobResult] = await pool.query('SELECT * FROM jobs WHERE job_id = ?', [jobId]);
-    if (jobResult.length === 0) {
-      return res.status(404).json({ error: 'Job not found' });
+    const jobs = await findJobById(jobId);
+
+    if (jobs.length === 0) {
+      return res.status(404).json({ error: "Job not found" });
     }
 
-    await pool.query('UPDATE jobs SET status = ? WHERE job_id = ?', [status, jobId]);
+    await updateJobStatus(status, jobId);
 
-    // Get employer email
-    const [employer] = await pool.query(
-      'SELECT email FROM users WHERE user_id = ?',
-      [jobResult[0].employer_id]
-    );
+    const employer = await findUserEmailById(jobs[0].employer_id);
 
-    // Send email notification
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
+    if (employer.length > 0) {
+      await sendEmail({
+        to: employer[0].email,
+        subject: `Your job "${jobs[0].title}" has been ${status}`,
+        text: `Hello, your job posting "${jobs[0].title}" has been ${status} by the admin.`,
+      });
+    }
+
+    res.status(200).json({
+      message: `Job ${status} successfully${
+        employer.length > 0 ? " and email sent to employer" : ""
+      }.`,
     });
-
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: employer[0].email,
-      subject: `Your job "${jobResult[0].title}" has been ${status}`,
-      text: `Hello, your job posting "${jobResult[0].title}" has been ${status} by the admin.`,
-    };
-
-    await transporter.sendMail(mailOptions);
-
-    res.status(200).json({ message: `Job ${status} successfully and email sent to employer.` });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error while approving job.' });
+  } catch (err) {
+    console.error("Approve job error:", err);
+    res.status(500).json({ error: "Server error while approving job" });
   }
 };
 // Get Jobs by specific Company (approved jobs only)

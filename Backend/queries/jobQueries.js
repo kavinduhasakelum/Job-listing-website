@@ -1,8 +1,10 @@
+
 export const insertJobQuery = `
   INSERT INTO jobs (
     employer_id, title, description, location, work_type, job_type, experience_level, industry, salary_min, salary_max, company_logo, status )
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
 `;
+
 
 export const getJobsQuery = `
   SELECT * FROM jobs WHERE status = 'approved'
