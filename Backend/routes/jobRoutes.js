@@ -18,7 +18,7 @@ import upload from "../utils/multer.js";
 const router = express.Router();
 
 router.post(
-  "/",
+  "/create",
   verifyToken,
   isEmployer,
   upload.single("company_logo"),

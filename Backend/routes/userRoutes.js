@@ -49,7 +49,6 @@ router.delete(
   deleteProfilePicture
     
 );
-<<<<<<< HEAD
 // // Job Seeker routes
 // router.post(
 //   "/jobseeker/details", 
@@ -70,29 +69,6 @@ router.delete(
 //   updateJobSeekerDetails
 // );
 
-=======
-
-// // Job Seeker routes
-// router.post(
-//   "/jobseeker/details", 
-//   verifyToken, 
-//   upload.single("profile_picture"), 
-//   createJobSeekerProfile
-// );
-
-// // get Job Seeker details
-// router.get("/jobseeker/details", verifyToken, getJobSeekerDetails);
-
-// // Update Job Seeker Profile
-// router.patch(
-//   "/jobseeker/details",
-//   verifyToken,
-//   upload.single("profile_picture"),
-//   validateJobSeekerUpdate,
-//   updateJobSeekerDetails
-// );
-
->>>>>>> 476eef00d4a03339a9e202e68fcbb23bb924d58f
 // // Delete only Profile Picture
 // router.delete(
 //   "/jobseeker/profile-picture", 

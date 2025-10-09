@@ -1,24 +1,27 @@
-import pool from "../config/dbConnection.js";
-import cloudinary from "../utils/cloudinary.js";
-import {
-  CREATE_USER,
-  FIND_USER_BY_EMAIL,
-  FIND_USER_BY_NAME,
-  DELETE_USER_BY_ID,
-  SOFT_DELETE_USER_BY_ID,
-  GET_ALL_USERS,
-  GET_ACTIVE_USERS,
-  GET_INACTIVE_USERS,
-  GET_USER_BY_ID_ALL,
-  GET_ACTIVE_USER_BY_ID,
-  GET_INACTIVE_USER_BY_ID,
-  GET_USER_PROFILE_BY_ID,
-} from "../queries/authQueries.js";
-import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { hashPassword, comparePassword } from "../utils/hashPassword.js";
 import { generateToken } from "../utils/generateToken.js";
 import { sendEmail } from "../utils/emailClient.js";
+import {
+  findUserByEmail,
+  findUserByName,
+  createUser,
+  getUserProfileById as getUserProfileByIdModel,
+  getAllUsers as getAllUsersModel,
+  getActiveUsers as getActiveUsersModel,
+  getInactiveUsers as getInactiveUsersModel,
+  getUserByIdAll as getUserByIdAllModel,
+  getActiveUserById as getActiveUserByIdModel,
+  getInactiveUserById as getInactiveUserByIdModel,
+  softDeleteUserById,
+  deleteUserById,
+  updateUserPassword,
+  findUserByEmailCaseInsensitive,
+  updatePasswordByUserId,
+  verifyUserEmailIfPending,
+  findUsersByRole,
+  findUserPasswordHashById,
+} from "../models/userModel.js";
 
 const ALLOWED_ROLES = ["admin", "employer", "jobseeker"];
 
@@ -41,13 +44,18 @@ export const register = async (req, res) => {
 
   try {
     // Check if user already exists
-    const [existing] = await pool.query(FIND_USER_BY_EMAIL, [email]);
+    const existing = await findUserByEmail(email);
     if (existing.length > 0) {
       return res.status(409).json({ error: "User already exists" });
     }
 
     const hashed = await hashPassword(password);
-    await pool.query(CREATE_USER, [name, email, hashed, normalizedRole]);
+    await createUser({
+      name,
+      email,
+      password: hashed,
+      role: normalizedRole,
+    });
 
     const token = jwt.sign({ email }, process.env.JWT_SECRET, {
       expiresIn: "1d",
@@ -81,20 +89,16 @@ export const login = async (req, res) => {
 
   try {
     // Check user by email or username
-    const [users1] = await pool.query(FIND_USER_BY_EMAIL, [name_or_email]);
-    const [users2] = await pool.query(FIND_USER_BY_NAME, [name_or_email]);
+    const usersByEmail = await findUserByEmail(name_or_email);
+    const usersByName = await findUserByName(name_or_email);
 
-    if (users1.length === 0 && users2.length === 0) {
+    if (usersByEmail.length === 0 && usersByName.length === 0) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
     // pick the found user
-    let user = null;
-    if (users1.length === 0) {
-      user = users2[0];
-    } else {
-      user = users1[0];
-    }
+    const user =
+      usersByEmail.length === 0 ? usersByName[0] : usersByEmail[0];
 
     // Check email verification
     if (user.is_verified !== 1) {
@@ -126,7 +130,7 @@ export const verifySession = async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const [rows] = await pool.query(GET_USER_PROFILE_BY_ID, [userId]);
+    const rows = await getUserProfileByIdModel(userId);
 
     if (rows.length === 0) {
       return res.status(404).json({ error: "User not found" });
@@ -156,7 +160,7 @@ export const verifySession = async (req, res) => {
 // View All Users (including deleted)
 export const getAllUsers = async (req, res) => {
   try {
-    const [users] = await pool.query(GET_ALL_USERS);
+    const users = await getAllUsersModel();
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -166,7 +170,7 @@ export const getAllUsers = async (req, res) => {
 // View Active Users
 export const getActiveUsers = async (req, res) => {
   try {
-    const [users] = await pool.query(GET_ACTIVE_USERS);
+    const users = await getActiveUsersModel();
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -176,7 +180,7 @@ export const getActiveUsers = async (req, res) => {
 // View Inactive (soft-deleted) Users
 export const getInactiveUsers = async (req, res) => {
   try {
-    const [users] = await pool.query(GET_INACTIVE_USERS);
+    const users = await getInactiveUsersModel();
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -188,7 +192,7 @@ export const getUserByIdAll = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const [users] = await pool.query(GET_USER_BY_ID_ALL, [id]);
+    const users = await getUserByIdAllModel(id);
     if (users.length === 0) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -203,7 +207,7 @@ export const getActiveUserById = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const [users] = await pool.query(GET_ACTIVE_USER_BY_ID, [id]);
+    const users = await getActiveUserByIdModel(id);
     if (users.length === 0) {
       return res.status(404).json({ error: "Active user not found" });
     }
@@ -218,7 +222,7 @@ export const getInactiveUserById = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const [users] = await pool.query(GET_INACTIVE_USER_BY_ID, [id]);
+    const users = await getInactiveUserByIdModel(id);
     if (users.length === 0) {
       return res.status(404).json({ error: "Inactive user not found" });
     }
@@ -233,12 +237,12 @@ export const softDeleteUser = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const [user] = await pool.query(GET_ACTIVE_USER_BY_ID, [id]);
+    const user = await getActiveUserByIdModel(id);
     if (user.length === 0) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    await pool.query(SOFT_DELETE_USER_BY_ID, [id]);
+    await softDeleteUserById(id);
     res.json({ message: "User soft deleted (marked as deleted)" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -257,12 +261,12 @@ export const hardDeleteUser = async (req, res) => {
   }
 
   try {
-    const [user] = await pool.query(GET_USER_BY_ID_ALL, [id]);
+    const user = await getUserByIdAllModel(id);
     if (user.length === 0) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    await pool.query(DELETE_USER_BY_ID, [id]);
+    await deleteUserById(id);
     res.json({ message: "User permanently deleted" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -278,10 +282,7 @@ export const sendVerificationEmail = async (req, res) => {
       return res.status(400).json({ error: "Email is required" });
     }
 
-    // Check if user exists
-    const [user] = await pool.query("SELECT * FROM users WHERE email = ?", [
-      email,
-    ]);
+    const user = await findUserByEmail(email);
     if (user.length === 0) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -317,11 +318,7 @@ export const verifyEmail = async (req, res) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Update only if not verified already
-    const [result] = await pool.query(
-      "UPDATE users SET is_verified = 1 WHERE email = ? AND is_verified = 0",
-      [decoded.email]
-    );
+    const result = await verifyUserEmailIfPending(decoded.email);
 
     if (result.affectedRows === 0) {
       return res
@@ -346,9 +343,7 @@ export const forgotPassword = async (req, res) => {
 
     const normalizedEmail = email.toLowerCase();
 
-    const [rows] = await pool.query("SELECT * FROM users WHERE email = ?", [
-      normalizedEmail,
-    ]);
+    const rows = await findUserByEmailCaseInsensitive(normalizedEmail);
 
     if (rows.length === 0) {
       return res.status(404).json({ error: "User not found" });
@@ -394,22 +389,17 @@ export const resetPassword = async (req, res) => {
     const normalizedEmail = decoded.email.toLowerCase();
 
     // Check if user exists
-    const [rows] = await pool.query("SELECT * FROM users WHERE email = ?", [
-      normalizedEmail,
-    ]);
+    const rows = await findUserByEmailCaseInsensitive(normalizedEmail);
 
     if (rows.length === 0) {
       return res.status(404).json({ error: "User not found for this email" });
     }
 
     // Hash new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await hashPassword(newPassword);
 
     // Update DB
-    const [result] = await pool.query(
-      "UPDATE users SET password = ? WHERE email = ?",
-      [hashedPassword, normalizedEmail]
-    );
+    const result = await updateUserPassword(hashedPassword, normalizedEmail);
 
     if (result.affectedRows === 0) {
       return res.status(400).json({ error: "Password not updated" });
@@ -435,10 +425,7 @@ export const changePassword = async (req, res) => {
     }
 
     // Get current password
-    const [rows] = await pool.query(
-      "SELECT password FROM users WHERE user_id = ?",
-      [userId]
-    );
+    const rows = await findUserPasswordHashById(userId);
     if (rows.length === 0) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -446,19 +433,20 @@ export const changePassword = async (req, res) => {
     const currentPassword = rows[0].password;
 
     // Check old password
-    const isMatch = await bcrypt.compare(oldPassword, currentPassword);
+    const isMatch = await comparePassword(oldPassword, currentPassword);
     if (!isMatch) {
       return res.status(401).json({ error: "Old password is incorrect" });
     }
 
     // Hash new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await hashPassword(newPassword);
 
     // Update password
-    await pool.query("UPDATE users SET password = ? WHERE user_id = ?", [
-      hashedPassword,
-      userId,
-    ]);
+    const result = await updatePasswordByUserId(hashedPassword, userId);
+
+    if (result.affectedRows === 0) {
+      return res.status(400).json({ error: "Password not updated" });
+    }
 
     res.json({ message: "Password changed successfully" });
   } catch (err) {
@@ -472,16 +460,12 @@ export const getUsersByRole = async (req, res) => {
   try {
     const { role } = req.params;
 
-    const ALLOWED_ROLES = ["admin", "employer", "jobseeker"];
-    if (!ALLOWED_ROLES.includes(role.toLowerCase())) {
+    const normalizedRole = role.toLowerCase();
+    if (!ALLOWED_ROLES.includes(normalizedRole)) {
       return res.status(400).json({ error: "Invalid role provided" });
     }
 
-    // Only return safe fields (don’t expose passwords, etc.)
-    const [users] = await pool.query(
-      "SELECT user_id, userName, email, role, is_verified, created_at FROM users WHERE role = ?",
-      [role.toLowerCase()]
-    );
+    const users = await findUsersByRole(normalizedRole);
 
     if (users.length === 0) {
       return res

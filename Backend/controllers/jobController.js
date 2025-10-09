@@ -1,14 +1,17 @@
-import pool from "../config/dbConnection.js";
 import cloudinary from "../utils/cloudinary.js";
-import {
-  insertJobQuery,
-  getJobsQuery,
-  getJobByIdQuery,
-  updateJobQuery,
-  deleteJobQuery,
-  getJobsByEmployerQuery,
-} from "../queries/jobQueries.js";
 import { sendEmail } from "../utils/emailClient.js";
+import {
+  createJobRecord,
+  findApprovedJobs,
+  findApprovedJobById,
+  findJobsByEmployerId,
+  updateJobRecord,
+  deleteJobRecord,
+  findJobById,
+  updateJobStatus,
+} from "../models/jobModel.js";
+import { findEmployerProfileByUserId } from "../models/employerModel.js";
+import { findUserEmailById } from "../models/userModel.js";
 
 const uploadFromBuffer = (fileBuffer, folder) =>
   new Promise((resolve, reject) => {
@@ -34,10 +37,7 @@ export const createJob = async (req, res) => {
 
     const employerId = req.user.id;
 
-    const [profile] = await pool.query(
-      "SELECT * FROM employer WHERE user_id = ?",
-      [employerId]
-    );
+    const profile = await findEmployerProfileByUserId(employerId);
 
     if (profile.length === 0) {
       return res
@@ -76,7 +76,7 @@ export const createJob = async (req, res) => {
       logoUrl = uploadResult.secure_url;
     }
 
-    await pool.query(insertJobQuery, [
+    await createJobRecord([
       employerId,
       title.trim(),
       description,
@@ -101,8 +101,8 @@ export const createJob = async (req, res) => {
 
 export const getAllJobs = async (req, res) => {
   try {
-    const [jobs] = await pool.query(getJobsQuery);
-    res.json(jobs);
+  const jobs = await findApprovedJobs();
+  res.json(jobs);
   } catch (err) {
     res.status(500).json({ error: "Server error while fetching jobs" });
   }
@@ -111,7 +111,7 @@ export const getAllJobs = async (req, res) => {
 export const getJobById = async (req, res) => {
   try {
     const { id } = req.params;
-    const [job] = await pool.query(getJobByIdQuery, [id]);
+    const job = await findApprovedJobById(id);
 
     if (job.length === 0) {
       return res.status(404).json({ error: "Job not found" });
@@ -125,9 +125,9 @@ export const getJobById = async (req, res) => {
 
 export const getJobsByEmployer = async (req, res) => {
   try {
-    const employerId = req.user.id;
-    const [jobs] = await pool.query(getJobsByEmployerQuery, [employerId]);
-    res.json(jobs);
+  const employerId = req.user.id;
+  const jobs = await findJobsByEmployerId(employerId);
+  res.json(jobs);
   } catch (err) {
     res.status(500).json({ error: "Server error while fetching jobs" });
   }
@@ -173,10 +173,7 @@ export const updateJob = async (req, res) => {
       return res.status(400).json({ error: "No fields provided to update" });
     }
 
-    const query = updateJobQuery(fields);
-    values.push(id, employerId);
-
-    const [result] = await pool.query(query, values);
+  const result = await updateJobRecord(fields, values, id, employerId);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: "Job not found" });
@@ -193,10 +190,10 @@ export const updateJob = async (req, res) => {
 
 export const deleteJob = async (req, res) => {
   try {
-    const employerId = req.user.id;
-    const { id } = req.params;
+  const employerId = req.user.id;
+  const { id } = req.params;
 
-    const [result] = await pool.query(deleteJobQuery, [id, employerId]);
+  const result = await deleteJobRecord(id, employerId);
 
     if (result.affectedRows === 0) {
       return res
@@ -221,24 +218,15 @@ export const approveJob = async (req, res) => {
   }
 
   try {
-    const [jobs] = await pool.query(
-      "SELECT * FROM jobs WHERE job_id = ?",
-      [jobId]
-    );
+    const jobs = await findJobById(jobId);
 
     if (jobs.length === 0) {
       return res.status(404).json({ error: "Job not found" });
     }
 
-    await pool.query("UPDATE jobs SET status = ? WHERE job_id = ?", [
-      status,
-      jobId,
-    ]);
+    await updateJobStatus(status, jobId);
 
-    const [employer] = await pool.query(
-      "SELECT email FROM users WHERE user_id = ?",
-      [jobs[0].employer_id]
-    );
+    const employer = await findUserEmailById(jobs[0].employer_id);
 
     if (employer.length > 0) {
       await sendEmail({
