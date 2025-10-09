@@ -20,6 +20,7 @@ import JobPostForm from "./pages/JobPostForm";
 import ChatPage from "./pages/Chat";
 import FindJobsPage from "./pages/FindJobsPage";
 import AdminDashboard from "./pages/AdminDashboard";
+import EmployeeDashboard from "./pages/EmployeeDashboard";
 import AboutUs from "./pages/AboutUs"; // <-- NEW
 
 const router = createBrowserRouter([
@@ -67,6 +68,12 @@ const router = createBrowserRouter([
       </AdminRoute>
     ), // protected admin route
   },
+
+  {
+    path: "/employee",
+    element: <EmployeeDashboard/>, // independent admin route
+  },
+
 ]);
 
 export default function App() {

@@ -27,3 +27,7 @@ export const deleteJobQuery = `
 export const getJobsByEmployerQuery = `
   SELECT * FROM jobs WHERE employer_id=?
 `;
+
+export const getApprovedJobsByCompanyQuery = `
+  SELECT * FROM jobs WHERE employer_id=? AND status = 'approved'
+`;

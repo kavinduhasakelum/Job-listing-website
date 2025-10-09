@@ -6,6 +6,7 @@ import {
   updateJobQuery,
   deleteJobQuery,
   getJobsByEmployerQuery,
+  getApprovedJobsByCompanyQuery,
 } from "../queries/jobQueries.js";
 
 export const createJobRecord = async (values) => {
@@ -42,6 +43,11 @@ export const findJobById = async (jobId) => {
   const [rows] = await pool.query("SELECT * FROM jobs WHERE job_id = ?", [
     jobId,
   ]);
+  return rows;
+};
+
+export const findApprovedJobsByCompany = async (employerId) => {
+  const [rows] = await pool.query(getApprovedJobsByCompanyQuery, [employerId]);
   return rows;
 };
 

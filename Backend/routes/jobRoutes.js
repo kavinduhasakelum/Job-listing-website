@@ -1,3 +1,4 @@
+
 import express from "express";
 import {
   createJob,
@@ -7,6 +8,7 @@ import {
   updateJob,
   deleteJob,
   approveJob,
+  getJobsByCompany,
 } from "../controllers/jobController.js";
 import {
   verifyToken,
@@ -40,6 +42,7 @@ router.delete("/:id", verifyToken, isEmployer, deleteJob);
 router.put("/approve/:jobId", verifyToken, isAdmin, approveJob);
 
 router.get("/", getAllJobs);
+// View all approved jobs by a company (Public)
+router.get("/company/:employerId", getJobsByCompany);
 router.get("/:id", getJobById);
-
 export default router;
