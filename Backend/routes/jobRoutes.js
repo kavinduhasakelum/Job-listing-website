@@ -45,4 +45,10 @@ router.get("/", getAllJobs);
 // View all approved jobs by a company (Public)
 router.get("/company/:employerId", getJobsByCompany);
 router.get("/:id", getJobById);
+<<<<<<< HEAD
+=======
+
+// View all approved jobs by a company (Public)
+router.get("/company/:employerId", getJobsByCompany);
+>>>>>>> 85eb812019f8a5af4e309d87cc62c21e277185c0
 export default router;
