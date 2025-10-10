@@ -4,10 +4,10 @@ import {
     getEmployerDetails,
     updateEmployerDetails,
     deleteProfilePicture,
-    // createJobSeekerProfile,
-    // getJobSeekerDetails,
-    // updateJobSeekerDetails,
-    // deleteJobSeekerProfilePicture,
+    createJobSeekerProfile,
+    getJobSeekerDetails,
+    updateJobSeekerDetails,
+    deleteJobSeekerProfilePicture,
 } from '../controllers/userController.js';
 import upload from '../utils/multer.js';
 import { verifyToken } from '../middlewares/authMiddleware.js';
@@ -42,7 +42,7 @@ router.patch(
    
 );
 
-// Delete only profile picture
+//Delete only profile picture
 router.delete(
   "/employer/profile-picture",
   verifyToken,
@@ -50,31 +50,30 @@ router.delete(
     
 );
 
-// // Job Seeker routes
-// router.post(
-//   "/jobseeker/details", 
-//   verifyToken, 
-//   upload.single("profile_picture"), 
-//   createJobSeekerProfile
-// );
+// Create Job Seeker Profile
+router.post(
+  "/jobseeker/details", 
+  verifyToken, 
+  upload.single("profile_picture"), 
+  createJobSeekerProfile
+);
 
-// // get Job Seeker details
-// router.get("/jobseeker/details", verifyToken, getJobSeekerDetails);
+// get Job Seeker details
+router.get("/jobseeker/details", verifyToken, getJobSeekerDetails);
 
-// // Update Job Seeker Profile
-// router.patch(
-//   "/jobseeker/details",
-//   verifyToken,
-//   upload.single("profile_picture"),
-//   validateJobSeekerUpdate,
-//   updateJobSeekerDetails
-// );
+// Update Job Seeker Profile
+router.patch(
+  "/jobseeker/details",
+  verifyToken,
+  upload.single("profile_picture"),
+  updateJobSeekerDetails
+);
 
-// // Delete only Profile Picture
-// router.delete(
-//   "/jobseeker/profile-picture", 
-//   verifyToken, 
-//   deleteJobSeekerProfilePicture
-// )
+// Delete only Profile Picture
+router.delete(
+  "/jobseeker/profile-picture", 
+  verifyToken, 
+  deleteJobSeekerProfilePicture
+)
 
 export default router;
