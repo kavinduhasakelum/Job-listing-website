@@ -10,6 +10,7 @@ import {
   updateJob,
   deleteJob,
   approveJob,
+  getJobsByCompany,
 } from "../controllers/jobController.js";
 import {
   verifyToken,
