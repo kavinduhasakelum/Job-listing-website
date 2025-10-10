@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import axios from "axios";
-import { Navigate, useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 // SQL Query for reference
 export const CREATE_USER = `
@@ -9,7 +9,17 @@ export const CREATE_USER = `
 `;
 
 function RegisterLogin() {
-  const navigate=useNavigate()
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { 
+    login, 
+    register, 
+    isAuthenticated, 
+    loading, 
+    error, 
+    clearError 
+  } = useAuth();
+  
   const [isLogin, setIsLogin] = useState(false);
 
   // Form data state
@@ -20,11 +30,8 @@ function RegisterLogin() {
     confirmPassword: "",
     role: "jobseeker", // Default role
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [localLoading, setLocalLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
   // Handle input changes
   const handleInputChange = (e) => {
@@ -35,38 +42,48 @@ function RegisterLogin() {
     }));
   };
 
+  // Redirect if already authenticated
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      // Redirect to intended destination or home
+      const from = location.state?.from?.pathname || '/';
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, location]);
+
+  // Clear errors when switching between login/register
+  React.useEffect(() => {
+    clearError();
+    setStatusMessage('');
+  }, [isLogin, clearError]);
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrorMessage("");
-    setStatusMessage("");
+    setStatusMessage('');
+    clearError();
 
     if (!isLogin) {
       // Register form validation
       if (formData.password !== formData.confirmPassword) {
-        alert("Passwords do not match!");
+        setStatusMessage('Passwords do not match!');
         return;
       }
 
-      setIsSubmitting(true);
+      setLocalLoading(true);
 
-      try {
-        const response = await axios.post(
-          `${API_BASE_URL}/auth/register`,
-          {
-            name: formData.userName,
-            email: formData.email,
-            password: formData.password,
-            role: formData.role,
-          }
-        );
+      const result = await register({
+        name: formData.userName,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+      });
 
-        setStatusMessage(
-          response.data?.message ||
-            "User registered successfully. Please verify your email."
-        );
+      setLocalLoading(false);
 
-        // Optionally switch to login view after successful registration
+      if (result.success) {
+        setStatusMessage(result.message);
+        // Switch to login mode after successful registration
         setIsLogin(true);
         setFormData({
           userName: "",
@@ -75,44 +92,19 @@ function RegisterLogin() {
           confirmPassword: "",
           role: "jobseeker",
         });
-      } catch (error) {
-        const apiError =
-          error.response?.data?.error ||
-          error.response?.data?.message ||
-          error.message ||
-          "Registration failed. Please try again.";
-        setErrorMessage(apiError);
-      } finally {
-        setIsSubmitting(false);
       }
     } else {
-      try{
-        const response = await axios.post(
-          `${API_BASE_URL}/auth/login`,
-          {
-            name_or_email: formData.email,
-            password: formData.password,
-          }
-        );
-        setStatusMessage(
-          response.data?.message ||
-            "User logged in successfully."
-        );
-        localStorage.setItem("token", response.data.token);
-        // Redirect to home or dashboard after login
-        navigate("/");
-      }catch(error){
-        const apiError =
-          error.response?.data?.error ||
-          error.response?.data?.message ||
-          error.message ||
-          "Login failed. Please try again.";
-        setErrorMessage(apiError);
+      // Login
+      setLocalLoading(true);
+      
+      const result = await login(formData.email, formData.password);
+      
+      setLocalLoading(false);
+
+      if (result.success) {
+        setStatusMessage(result.message || 'Login successful!');
+        // AuthContext will handle the redirect via useEffect above
       }
-      console.log("Login attempt:", {
-        email: formData.email,
-        password: formData.password,
-      });
     }
   };
 
@@ -246,10 +238,10 @@ function RegisterLogin() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={localLoading || loading}
                 className="w-full bg-gradient-to-r from-purple-600 to-orange-500 text-white py-3 px-4 rounded-xl font-semibold hover:from-purple-700 hover:to-orange-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transform hover:scale-[1.02] transition-all duration-200 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {isSubmitting
+                {(localLoading || loading)
                   ? isLogin
                     ? "Signing In..."
                     : "Creating Account..."
@@ -263,9 +255,9 @@ function RegisterLogin() {
                 {statusMessage}
               </div>
             )}
-            {errorMessage && (
+            {error && (
               <div className="mt-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
-                {errorMessage}
+                {error}
               </div>
             )}
           </div>

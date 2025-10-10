@@ -1,26 +1,29 @@
-export const CREATE_JOB = `
-    INSERT INTO jobs (employer_id, title, description, location, salary, job_type)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `;
 
-export const GET_ALL_JOBS = `
-    SELECT * FROM jobs
-  `;
+export const insertJobQuery = `
+  INSERT INTO jobs (
+    employer_id, title, description, location, work_type, job_type, experience_level, industry, salary_min, salary_max, company_logo, status )
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+`;
 
-export const GET_JOB_BY_ID = `
-    SELECT * FROM jobs WHERE job_id = ?
-  `;
 
-export const GET_EMPLOYER_JOBS = `
-    SELECT * FROM jobs WHERE employer_id = ?
-  `;
+export const getJobsQuery = `
+  SELECT * FROM jobs WHERE status = 'approved'
+`;
 
-export const UPDATE_JOB = `
-    UPDATE jobs
-    SET title=?, description=?, location=?, salary=?, job_type=?
-    WHERE job_id=? AND employer_id=?
-  `;
+export const getJobByIdQuery = `
+  SELECT * FROM jobs WHERE job_id = ? AND status = 'approved'
+`;
 
-export const DELETE_JOB = `
-    DELETE FROM jobs WHERE job_id=? AND employer_id=?
-  `;
+export const updateJobQuery = (fields) => `
+  UPDATE jobs
+  SET ${fields.join(", ")}, status='pending'
+  WHERE job_id=? AND employer_id=?
+`;
+
+export const deleteJobQuery = `
+  DELETE FROM jobs WHERE job_id=? AND employer_id=?
+`;
+
+export const getJobsByEmployerQuery = `
+  SELECT * FROM jobs WHERE employer_id=?
+`;
