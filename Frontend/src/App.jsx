@@ -1,5 +1,5 @@
 import React from "react";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
 
 // Auth Context
 import { AuthProvider } from "./contexts/AuthContext";
@@ -20,8 +20,9 @@ import JobPostForm from "./pages/JobPostForm";
 import ChatPage from "./pages/Chat";
 import FindJobsPage from "./pages/FindJobsPage";
 import AdminDashboard from "./pages/AdminDashboard";
-import EmployeeDashboard from "./pages/EmployeeDashboard";
+import EmployerDashboard from "./pages/EmployerDashboard";
 import AboutUs from "./pages/AboutUs"; // <-- NEW
+import EmployerProfileForm from "./pages/EmployerProfileForm";
 
 const router = createBrowserRouter([
   {
@@ -58,6 +59,14 @@ const router = createBrowserRouter([
       },
       { path: "find-jobs", element: <FindJobsPage /> },
       { path: "about", element: <AboutUs /> }, 
+      {
+        path: "employer/profile",
+        element: (
+          <EmployerRoute>
+            <EmployerProfileForm />
+          </EmployerRoute>
+        ),
+      },
     ],
   },
   {
@@ -70,8 +79,16 @@ const router = createBrowserRouter([
   },
 
   {
+    path: "/employer-dashboard",
+    element: (
+      <EmployerRoute>
+        <EmployerDashboard />
+      </EmployerRoute>
+    ),
+  },
+  {
     path: "/employee",
-    element: <EmployeeDashboard/>, // independent admin route
+    element: <Navigate to="/employer-dashboard" replace />,
   },
 
 ]);

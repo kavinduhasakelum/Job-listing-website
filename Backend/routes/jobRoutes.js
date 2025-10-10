@@ -1,26 +1,33 @@
-
 import express from "express";
 import { 
  approveJob, saveJob, getSavedJobs, removeSavedJob, createJob, getAllJobs, getJobById, getEmployerJobs, updateJob, deleteJob
 import {
+  approveJob,
+  saveJob,
+  getSavedJobs,
+  removeSavedJob,
   createJob,
   getAllJobs,
   getJobById,
   getJobsByEmployer,
   updateJob,
   deleteJob,
-  approveJob,
   getJobsByCompany,
 } from "../controllers/jobController.js";
+
 import {
   verifyToken,
   isAdmin,
   isEmployer,
 } from "../middlewares/authMiddleware.js";
+
 import upload from "../utils/multer.js";
 
 const router = express.Router();
 
+// ---------------- Employer Protected Routes ----------------
+
+// Create a job
 router.post(
   "/create",
   verifyToken,
@@ -29,8 +36,10 @@ router.post(
   createJob
 );
 
+// Get jobs posted by the logged-in employer
 router.get("/my-jobs", verifyToken, isEmployer, getJobsByEmployer);
 
+// Update a job
 router.put(
   "/:id",
   verifyToken,
@@ -39,17 +48,17 @@ router.put(
   updateJob
 );
 
+// Delete a job
 router.delete("/:id", verifyToken, isEmployer, deleteJob);
 
+// ---------------- Admin Protected Routes ----------------
+
+// Approve a job
 router.put("/approve/:jobId", verifyToken, isAdmin, approveJob);
 
-router.get("/", getAllJobs);
-// View all approved jobs by a company (Public)
-router.get("/company/:employerId", getJobsByCompany);
-router.get("/:id", getJobById);
-<<<<<<< HEAD
-=======
+// ---------------- Public Routes ----------------
 
+<<<<<<< HEAD
 // Employer protected
 router.post("/", verifyToken, createJob);
 router.get("/employer/my-jobs", verifyToken, getEmployerJobs);
@@ -66,6 +75,26 @@ router.get("/save-job", verifyToken, getSavedJobs);
 router.delete("/save-job/:jobId", verifyToken, removeSavedJob);
 
 // View all approved jobs by a company (Public)
+=======
+// Get all jobs
+router.get("/", getAllJobs);
+
+// Get all approved jobs by a specific company
+>>>>>>> feature/add-employerdashboard
 router.get("/company/:employerId", getJobsByCompany);
->>>>>>> 85eb812019f8a5af4e309d87cc62c21e277185c0
+
+// Get a specific job by ID
+router.get("/:id", getJobById);
+
+// ---------------- Job Save Functionality (Jobseeker) ----------------
+
+// Save a job
+router.post("/save-job/:jobId", verifyToken, saveJob);
+
+// Get all saved jobs
+router.get("/save-job", verifyToken, getSavedJobs);
+
+// Remove a saved job
+router.delete("/save-job/:jobId", verifyToken, removeSavedJob);
+
 export default router;

@@ -7,10 +7,12 @@ import {
   deleteJobQuery,
   getJobsByEmployerQuery,
   getApprovedJobsByCompanyQuery,
+  incrementJobViewsQuery,
 } from "../queries/jobQueries.js";
 
 export const createJobRecord = async (values) => {
-  await pool.query(insertJobQuery, values);
+  const [result] = await pool.query(insertJobQuery, values);
+  return result;
 };
 
 export const findApprovedJobs = async () => {
@@ -56,5 +58,10 @@ export const updateJobStatus = async (status, jobId) => {
     status,
     jobId,
   ]);
+};
+
+export const incrementJobViews = async (jobId) => {
+  const [result] = await pool.query(incrementJobViewsQuery, [jobId]);
+  return result;
 };
 
