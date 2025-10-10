@@ -1,3 +1,4 @@
+import pool from "../config/dbConnection.js";
 import cloudinary from "../utils/cloudinary.js";
 import { sendEmail } from "../utils/emailClient.js";
 import {
@@ -386,6 +387,85 @@ export const approveJob = async (req, res) => {
     res.status(500).json({ error: "Server error while approving job" });
   }
 };
+
+// Save a job
+export const saveJob = async (req, res) => {
+  try {
+    const jobseekerId = req.user.id;
+    const { jobId } = req.params;
+
+    const job = await findApprovedJobById(jobId);
+    if (job.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Job not found or not approved yet" });
+    }
+
+    const [existing] = await pool.query(
+      "SELECT 1 FROM saved_jobs WHERE jobseeker_id = ? AND job_id = ?",
+      [jobseekerId, jobId]
+    );
+    if (existing.length > 0) {
+      return res.status(409).json({ error: "Job already saved" });
+    }
+
+    await pool.query(
+      "INSERT INTO saved_jobs (jobseeker_id, job_id) VALUES (?, ?)",
+      [jobseekerId, jobId]
+    );
+
+    res.status(201).json({ message: "Job saved successfully" });
+  } catch (err) {
+    console.error("Save job error:", err);
+    res.status(500).json({ error: "Server error while saving job" });
+  }
+};
+
+export const getSavedJobs = async (req, res) => {
+  try {
+    const jobseekerId = req.user.id;
+
+    const [rows] = await pool.query(
+      `SELECT j.*
+       FROM saved_jobs s
+       JOIN jobs j ON s.job_id = j.job_id
+       WHERE s.jobseeker_id = ?
+       ORDER BY s.created_at DESC`,
+      [jobseekerId]
+    );
+
+    const jobs = rows
+      .map((job) => normaliseJobForDashboard(job))
+      .filter(Boolean);
+
+    res.json({ jobs });
+  } catch (err) {
+    console.error("Get saved jobs error:", err);
+    res.status(500).json({ error: "Server error while fetching saved jobs" });
+  }
+};
+
+export const removeSavedJob = async (req, res) => {
+  try {
+    const jobseekerId = req.user.id;
+    const { jobId } = req.params;
+
+    const [result] = await pool.query(
+      "DELETE FROM saved_jobs WHERE jobseeker_id = ? AND job_id = ?",
+      [jobseekerId, jobId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Saved job not found" });
+    }
+
+    res.json({ message: "Saved job removed successfully" });
+  } catch (err) {
+    console.error("Remove saved job error:", err);
+    res.status(500).json({ error: "Server error while removing saved job" });
+  }
+};
+
 // Get Jobs by specific Company (approved jobs only)
 export const getJobsByCompany = async (req, res) => {
   try {
