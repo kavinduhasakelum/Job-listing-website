@@ -28,3 +28,27 @@ export const deleteProfilePictureQuery = `
   UPDATE employer SET profile_picture = NULL WHERE user_id = ?
 `;
 
+// Insert Job Seeker Details
+export const insertJobSeekerDetailsQuery = `
+  INSERT INTO job_seeker
+    (user_id, full_name, address, contact_number, birthday, gender, profile_picture)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
+`;
+
+// Get Job Seeker Details
+export const getJobSeekerDetailsQuery = `
+  SELECT j.*, u.userName, u.email
+  FROM job_seeker j
+  JOIN users u ON j.user_id = u.user_id
+  WHERE j.user_id = ?
+`;
+
+// Update Job Seeker Details
+export const updateJobSeekerDetailsQuery = (fields) => `
+  UPDATE job_seeker SET ${fields.join(", ")} WHERE user_id = ?
+`;
+
+// Delete Job Seeker Profile Picture
+export const deleteJobSeekerProfilePictureQuery = `
+  UPDATE job_seeker SET profile_picture = NULL WHERE user_id = ?
+`;
