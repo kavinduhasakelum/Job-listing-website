@@ -217,6 +217,95 @@ export const approveJob = async (req, res) => {
       error: "Invalid status. Use approved or rejected.",
     });
   }
+};
+
+// Save a job
+export const saveJob = async (req, res) => {
+  try {
+    const jobseekerId = req.user.id;
+    const { jobId } = req.params;
+
+    // check if job exists and is approved
+    const [job] = await pool.query(
+      "SELECT * FROM jobs WHERE job_id = ? AND status = 'approved'",
+      [jobId]
+    );
+    if (job.length === 0) {
+      return res.status(404).json({ error: "Job not found or not approved yet" });
+    }
+
+    // check if already saved
+    const [existing] = await pool.query(
+      "SELECT * FROM saved_jobs WHERE jobseeker_id = ? AND job_id = ?",
+      [jobseekerId, jobId]
+    );
+    if (existing.length > 0) {
+      return res.status(400).json({ error: "Job already saved" });
+    }
+
+    await pool.query(
+      "INSERT INTO saved_jobs (jobseeker_id, job_id) VALUES (?, ?)",
+      [jobseekerId, jobId]
+    );
+
+    res.status(201).json({ message: "Job saved successfully" });
+  } catch (err) {
+    console.error("Save job error:", err);
+    res.status(500).json({ error: "Server error while saving job" });
+  }
+};
+
+// Get all saved jobs for current jobseeker
+export const getSavedJobs = async (req, res) => {
+  try {
+    const jobseekerId = req.user.id;
+    console.log("Jobseeker ID:", jobseekerId);
+
+    const [saved] = await pool.query("SELECT * FROM saved_jobs WHERE jobseeker_id = ?", [jobseekerId]);
+    console.log("Saved jobs raw:", saved);
+
+    const [joined] = await pool.query(
+      `SELECT j.* 
+       FROM saved_jobs s 
+       JOIN jobs j ON s.job_id = j.job_id 
+       WHERE s.jobseeker_id = ?`,
+      [jobseekerId]
+    );
+
+    console.log("Joined results:", joined);
+
+    if (joined.length === 0) {
+      return res.status(404).json({ message: "No saved jobs found" });
+    }
+
+    res.json(joined);
+  } catch (err) {
+    console.error("Get saved jobs error:", err);
+    res.status(500).json({ error: "Server error while fetching saved jobs" });
+  }
+};
+
+// Remove a saved job
+export const removeSavedJob = async (req, res) => {
+  try {
+    const jobseekerId = req.user.id;
+    const { jobId } = req.params;
+
+    const [result] = await pool.query(
+      "DELETE FROM saved_jobs WHERE jobseeker_id = ? AND job_id = ?",
+      [jobseekerId, jobId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Saved job not found" });
+    }
+
+    res.json({ message: "Saved job removed successfully" });
+  } catch (err) {
+    console.error("Remove saved job error:", err);
+    res.status(500).json({ error: "Server error while removing saved job" });
+  }
+};
 
   try {
     const jobs = await findJobById(jobId);
