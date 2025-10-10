@@ -10,7 +10,8 @@ import {
 } from "../queries/jobQueries.js";
 
 export const createJobRecord = async (values) => {
-  await pool.query(insertJobQuery, values);
+  const [result] = await pool.query(insertJobQuery, values);
+  return result;
 };
 
 export const findApprovedJobs = async () => {

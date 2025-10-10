@@ -12,9 +12,27 @@ import {
   // deleteJobSeekerProfilePictureQuery,
 } from "../queries/userQueries.js";
 
+const ensureEmployerProfileSchema = async () => {
+  try {
+    const [columnCheck] = await pool.query(
+      "SHOW COLUMNS FROM employers LIKE 'profile_picture'"
+    );
+
+    if (columnCheck.length === 0) {
+      await pool.query(
+        "ALTER TABLE employers ADD COLUMN profile_picture VARCHAR(512) NULL"
+      );
+    }
+  } catch (schemaError) {
+    console.error("Employer schema validation failed:", schemaError.message);
+  }
+};
+
 // Add employer details (only once after register)
 export const createEmployerProfile = async (req, res) => {
   try {
+    await ensureEmployerProfileSchema();
+
     const userId = req.user.id; // JWT user_id
     const {
       company_name,
@@ -83,6 +101,8 @@ export const getEmployerDetails = async (req, res) => {
 // Update employer details
 export const updateEmployerDetails = async (req, res) => {
   try {
+    await ensureEmployerProfileSchema();
+
     const userId = req.user.id;
 
     let profilePictureUrl = null;
@@ -142,6 +162,8 @@ export const updateEmployerDetails = async (req, res) => {
 // Delete profile picture
 export const deleteProfilePicture = async (req, res) => {
   try {
+    await ensureEmployerProfileSchema();
+
     const [rows] = await pool.query(getProfilePictureQuery, [req.user.id]);
 
     if (rows.length === 0) {

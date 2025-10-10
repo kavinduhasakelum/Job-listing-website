@@ -1,11 +1,61 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 function NavBar() {
   const [open, setOpen] = useState(false);
   const { user, isAuthenticated, logout, isAdmin, isEmployer } = useAuth();
   const navigate = useNavigate();
+  const [hasEmployerProfile, setHasEmployerProfile] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const employerCheck =
+      typeof isEmployer === "function" ? isEmployer() : false;
+
+    if (!isAuthenticated || !employerCheck) {
+      setHasEmployerProfile(false);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    const controller = new AbortController();
+
+    const fetchEmployerProfile = async () => {
+      try {
+        await axios.get(`${API_BASE_URL}/user/employer/details`, {
+          signal: controller.signal,
+        });
+        if (isMounted) {
+          setHasEmployerProfile(true);
+        }
+      } catch (error) {
+        if (!isMounted) return;
+
+        if (typeof axios.isCancel === "function" && axios.isCancel(error)) {
+          return;
+        }
+
+        if (error.response?.status === 404) {
+          setHasEmployerProfile(false);
+        } else {
+          setHasEmployerProfile(false);
+        }
+      }
+    };
+
+    fetchEmployerProfile();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [isAuthenticated, isEmployer, user?.id]);
 
   const handleLogout = () => {
     logout();
@@ -13,10 +63,17 @@ function NavBar() {
   };
 
   const handleProfileClick = () => {
-    if (isAdmin()) {
+    const adminCheck = typeof isAdmin === "function" ? isAdmin() : false;
+    const employerCheck = typeof isEmployer === "function" ? isEmployer() : false;
+
+    if (adminCheck) {
       navigate('/admin');
-    } else if (isEmployer()) {
-      navigate('/employer-dashboard');
+    } else if (employerCheck) {
+      if (hasEmployerProfile) {
+        navigate('/employer-dashboard');
+      } else {
+        navigate('/employer/profile');
+      }
     } else {
       navigate('/profile');
     }
@@ -240,7 +297,7 @@ function NavBar() {
                 <button
                   type="button"
                   onClick={() => {
-                    navigate('/postjob');
+                    navigate('/post-job');
                     setOpen(false);
                   }}
                   className="w-full h-10 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-medium shadow hover:opacity-90 transition"
@@ -256,7 +313,13 @@ function NavBar() {
                 }}
                 className="w-full h-10 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition"
               >
-                {isAdmin() ? 'Admin Dashboard' : isEmployer() ? 'Dashboard' : 'Profile'}
+                {isAdmin()
+                  ? 'Admin Dashboard'
+                  : isEmployer()
+                    ? hasEmployerProfile
+                      ? 'Employer Dashboard'
+                      : 'Employer Profile'
+                    : 'Profile'}
               </button>
               
               <button
