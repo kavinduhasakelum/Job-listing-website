@@ -14,6 +14,12 @@ export const getJobByIdQuery = `
   SELECT * FROM jobs WHERE job_id = ? AND status = 'approved'
 `;
 
+export const incrementJobViewsQuery = `
+  UPDATE jobs
+  SET views = COALESCE(views, 0) + 1
+  WHERE job_id = ?
+`;
+
 export const updateJobQuery = (fields) => `
   UPDATE jobs
   SET ${fields.join(", ")}, status='pending'

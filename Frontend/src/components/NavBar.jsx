@@ -1,61 +1,53 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 function NavBar() {
   const [open, setOpen] = useState(false);
-  const { user, isAuthenticated, logout, isAdmin, isEmployer } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    logout,
+    isAdmin,
+    isEmployer,
+    employerProfile,
+    employerProfileLoading,
+    fetchEmployerProfile,
+  } = useAuth();
   const navigate = useNavigate();
-  const [hasEmployerProfile, setHasEmployerProfile] = useState(false);
+  const employerCheck = typeof isEmployer === "function" ? isEmployer() : false;
+  const hasEmployerProfile = !!employerProfile;
 
   useEffect(() => {
-    let isMounted = true;
-    const employerCheck =
-      typeof isEmployer === "function" ? isEmployer() : false;
-
-    if (!isAuthenticated || !employerCheck) {
-      setHasEmployerProfile(false);
-      return () => {
-        isMounted = false;
-      };
+    if (isAuthenticated && employerCheck && !hasEmployerProfile && !employerProfileLoading) {
+      fetchEmployerProfile().catch(() => {
+        /* handled in context */
+      });
     }
+  }, [
+    isAuthenticated,
+    employerCheck,
+    hasEmployerProfile,
+    employerProfileLoading,
+    fetchEmployerProfile,
+  ]);
 
-    const controller = new AbortController();
+  useEffect(() => {
+    if (!isAuthenticated || !employerCheck) {
+      setOpen(false);
+    }
+  }, [isAuthenticated, employerCheck]);
 
-    const fetchEmployerProfile = async () => {
-      try {
-        await axios.get(`${API_BASE_URL}/user/employer/details`, {
-          signal: controller.signal,
-        });
-        if (isMounted) {
-          setHasEmployerProfile(true);
-        }
-      } catch (error) {
-        if (!isMounted) return;
+  const profileImageUrl =
+    employerProfile?.profile_picture ||
+    employerProfile?.profilePictureUrl ||
+    user?.profile_picture ||
+    user?.profilePictureUrl;
 
-        if (typeof axios.isCancel === "function" && axios.isCancel(error)) {
-          return;
-        }
-
-        if (error.response?.status === 404) {
-          setHasEmployerProfile(false);
-        } else {
-          setHasEmployerProfile(false);
-        }
-      }
-    };
-
-    fetchEmployerProfile();
-
-    return () => {
-      isMounted = false;
-      controller.abort();
-    };
-  }, [isAuthenticated, isEmployer, user?.id]);
+  const profileInitial =
+    user?.name?.charAt(0)?.toUpperCase() ||
+    user?.userName?.charAt(0)?.toUpperCase() ||
+    "U";
 
   const handleLogout = () => {
     logout();
@@ -64,8 +56,6 @@ function NavBar() {
 
   const handleProfileClick = () => {
     const adminCheck = typeof isAdmin === "function" ? isAdmin() : false;
-    const employerCheck = typeof isEmployer === "function" ? isEmployer() : false;
-
     if (adminCheck) {
       navigate('/admin');
     } else if (employerCheck) {
@@ -174,9 +164,17 @@ function NavBar() {
               <div className="relative">
                 <button
                   onClick={handleProfileClick}
-                  className="w-9 h-9 rounded-full object-cover border border-gray-200 hover:scale-105 transition-transform duration-300 cursor-pointer bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-bold flex items-center justify-center"
+                  className="w-9 h-9 rounded-full border border-gray-200 hover:scale-105 transition-transform duration-300 cursor-pointer overflow-hidden bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-bold flex items-center justify-center"
                 >
-                  {user?.name?.charAt(0)?.toUpperCase() || user?.userName?.charAt(0)?.toUpperCase() || 'U'}
+                  {profileImageUrl ? (
+                    <img
+                      src={profileImageUrl}
+                      alt={`${user?.name || user?.userName || "User"} avatar`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    profileInitial
+                  )}
                 </button>
               </div>
               

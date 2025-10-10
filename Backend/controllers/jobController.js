@@ -10,6 +10,7 @@ import {
   findJobById,
   updateJobStatus,
   findApprovedJobsByCompany,
+  incrementJobViews,
 } from "../models/jobModel.js";
 import { findEmployerProfileByUserId } from "../models/employerModel.js";
 import { findUserEmailById } from "../models/userModel.js";
@@ -223,8 +224,28 @@ export const getJobById = async (req, res) => {
     if (job.length === 0) {
       return res.status(404).json({ error: "Job not found" });
     }
+    let jobRecord = job[0];
 
-    res.json(job[0]);
+    try {
+      await incrementJobViews(id);
+      const previousViews = Number(
+        jobRecord.views ??
+          jobRecord.view_count ??
+          jobRecord.total_views ??
+          0
+      );
+      const updatedViews = Number.isFinite(previousViews)
+        ? previousViews + 1
+        : 1;
+      jobRecord = {
+        ...jobRecord,
+        views: updatedViews,
+      };
+    } catch (viewError) {
+      console.error("Failed to increment job views", viewError);
+    }
+
+    res.json(jobRecord);
   } catch (err) {
     res.status(500).json({ error: "Server error while fetching job" });
   }

@@ -117,7 +117,7 @@ function JobForm() {
     }
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/jobs/create`, payload, {
+      const response = await axios.post(`${API_BASE_URL}/job/create`, payload, {
         headers: {
           "Content-Type": "multipart/form-data",
         },

@@ -10,7 +10,7 @@ import { useAuth } from "../contexts/AuthContext";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
-const JOBS_ENDPOINT = `${API_BASE_URL}/jobs`;
+const JOBS_ENDPOINT = `${API_BASE_URL}/job`;
 const EMPLOYER_PROFILE_ENDPOINT = `${API_BASE_URL}/user/employer/details`;
 
 const STATUS_LABELS = {
