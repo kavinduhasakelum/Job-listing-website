@@ -1,5 +1,9 @@
 import React from "react";
-import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
+import {
+  createBrowserRouter,
+  Navigate,
+  RouterProvider,
+} from "react-router-dom";
 
 // Auth Context
 import { AuthProvider } from "./contexts/AuthContext";
@@ -23,6 +27,9 @@ import AdminDashboard from "./pages/AdminDashboard";
 import EmployerDashboard from "./pages/EmployerDashboard";
 import AboutUs from "./pages/AboutUs"; // <-- NEW
 import EmployerProfileForm from "./pages/EmployerProfileForm";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import AllJobs from "./pages/AllJobs";
 
 const router = createBrowserRouter([
   {
@@ -38,8 +45,11 @@ const router = createBrowserRouter([
         ),
       },
       { path: "job", element: <JobView /> },
-      { path: "jobs", element: <SearchJob /> },
+
+      { path: "all-jobs", element: <AllJobs /> },
       { path: "register", element: <RegisterLogin /> },
+      { path: "forgot-password", element: <ForgotPassword /> },
+      { path: "reset-password", element: <ResetPassword /> },
       {
         path: "post-job",
         element: (
@@ -47,7 +57,7 @@ const router = createBrowserRouter([
             <JobPostForm />
           </EmployerRoute>
         ),
-      }, 
+      },
       { path: "search", element: <SearchJob /> },
       {
         path: "chat",
@@ -57,8 +67,7 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      { path: "find-jobs", element: <FindJobsPage /> },
-      { path: "about", element: <AboutUs /> }, 
+      { path: "about", element: <AboutUs /> },
       {
         path: "employer/profile",
         element: (
@@ -90,7 +99,6 @@ const router = createBrowserRouter([
     path: "/employee",
     element: <Navigate to="/employer-dashboard" replace />,
   },
-
 ]);
 
 export default function App() {
