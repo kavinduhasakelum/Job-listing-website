@@ -7,18 +7,23 @@ import {
   getJobsByEmployer,
   updateJob,
   deleteJob,
-  approveJob,
+  approveOrRejectJob,
   getJobsByCompany,
+  saveJob,
+  getSavedJobs,
+  removeSavedJob,
+  getEmployerJobs
 } from "../controllers/jobController.js";
 import {
   verifyToken,
   isAdmin,
-  isEmployer,
+  isEmployer
 } from "../middlewares/authMiddleware.js";
 import upload from "../utils/multer.js";
 
 const router = express.Router();
 
+// Create Job
 router.post(
   "/create",
   verifyToken,
@@ -27,8 +32,10 @@ router.post(
   createJob
 );
 
+// Get Jobs by Employer
 router.get("/my-jobs", verifyToken, isEmployer, getJobsByEmployer);
 
+// Update Job
 router.put(
   "/:id",
   verifyToken,
@@ -37,13 +44,25 @@ router.put(
   updateJob
 );
 
+// Delete Job
 router.delete("/:id", verifyToken, isEmployer, deleteJob);
 
-router.put("/approve/:jobId", verifyToken, isAdmin, approveJob);
+// Approve Job (Admin only)
+router.put("/approve/:jobId", approveOrRejectJob);
 
-router.get("/", getAllJobs);
+// Save a job
+router.post("/save-job/:jobId", verifyToken, saveJob);
+
+// Get all saved jobs of jobseeker
+router.get("/save-job", verifyToken, getSavedJobs);
+
+// Remove a saved job
+router.delete("/save-job/:jobId", verifyToken, removeSavedJob);
+
 // View all approved jobs by a company (Public)
 router.get("/company/:employerId", getJobsByCompany);
+
+router.get("/", getAllJobs);
 router.get("/:id", getJobById);
 
 export default router;

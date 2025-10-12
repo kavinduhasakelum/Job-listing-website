@@ -9,7 +9,7 @@ import {
 
 export const findEmployerProfileByUserId = async (userId) => {
   const [rows] = await pool.query(
-    "SELECT * FROM employers WHERE user_id = ?",
+    "SELECT * FROM employer WHERE user_id = ?",
     [userId]
   );
   return rows;
