@@ -18,9 +18,26 @@ export const verifyToken = (req, res, next) => {
     }
 };
 
+// Admin Access only
 export const isAdmin = (req, res, next) => {
     if (req.user?.role !== 'admin') {
         return res.status(403).json({ error: 'Access denied. Admins only.' });
     }
     next();
+};
+
+// Employer Access Only
+export const isEmployer = (req, res, next) => {
+  if (req.user?.role !== "employer") {
+    return res.status(403).json({ error: "Access denied. Employers only." });
+  }
+  next();
+};
+
+// Jobseeker Access Only
+export const isJobSeeker = (req, res, next) => {
+  if (req.user?.role !== "jobseeker") {
+    return res.status(403).json({ error: "Access denied. Jobseekers only." });
+  }
+  next();
 };

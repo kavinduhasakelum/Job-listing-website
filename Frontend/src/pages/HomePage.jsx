@@ -1,8 +1,9 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { motion } from "framer-motion";
 import SearchAndFilter from "../components/SearchAndFilter";
 import HomeJobCard from "../components/HomeJobCard";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 const logos = [
   {
@@ -50,23 +51,7 @@ const logos = [
 const rand = (min, max) => Math.random() * (max - min) + min;
 
 function HomePage() {
-  const navigate = useNavigate();
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/register");
-      return;
-    }
-
-    // axios.get("/api/me", {
-    //   headers: { Authorization: `Bearer ${token}` }
-    // }).then(res => {
-    //   setUser(res.data);
-    // }).catch(() => {
-    //   localStorage.removeItem("token");
-    //   navigate("/login");
-    // });
-  }, [navigate]);
+  const { user, isAuthenticated } = useAuth();
 
   const jobCards = [1, 2, 3, 4, 5, 6];
 
@@ -129,7 +114,7 @@ function HomePage() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          🏆 No.1 WorkNest Website
+          {isAuthenticated && user ? `Welcome back, ${user.name || user.userName}! 👋` : "🏆 No.1 WorkNest Website"}
         </motion.div>
 
         {/* Heading */}
@@ -157,7 +142,7 @@ function HomePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <NavLink to="/find-jobs">
+          <NavLink to="/all-jobs">
             <motion.button
               whileHover={{
                 scale: 1.1,
@@ -223,9 +208,11 @@ function HomePage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
-          <button className="px-6 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white font-medium hover:opacity-90 hover:scale-105 transition-transform duration-300 shadow-md">
-            View More Jobs
-          </button>
+          <NavLink to="/all-jobs">
+            <button className="px-6 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white font-medium hover:opacity-90 hover:scale-105 transition-transform duration-300 shadow-md">
+              View More Jobs
+            </button>
+          </NavLink>
         </motion.div>
       </section>
     </div>

@@ -15,7 +15,8 @@ import {
     resetPassword,
     sendVerificationEmail,
     changePassword,
-    getUsersByRole
+    getUsersByRole,
+    verifySession
 } from '../controllers/authController.js';
 
 import { verifyToken, isAdmin } from '../middlewares/authMiddleware.js'; // Assume this middleware verifies token
@@ -37,7 +38,8 @@ router.get('/user/inactive/:id', verifyToken, getInactiveUserById);
 router.delete('/user/soft/:id', verifyToken, softDeleteUser);
 router.delete('/user/hard/:id', verifyToken, isAdmin, hardDeleteUser); // Admin only
 
-// Email verification
+// Email verification and token verification
+router.get("/verify", verifyToken, verifySession);
 router.get("/verify-email", verifyEmail);
 
 // Email Verification Send

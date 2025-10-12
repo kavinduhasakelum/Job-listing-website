@@ -1,7 +1,73 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 function NavBar() {
   const [open, setOpen] = useState(false);
+  const {
+    user,
+    isAuthenticated,
+    logout,
+    isAdmin,
+    isEmployer,
+    employerProfile,
+    employerProfileLoading,
+    fetchEmployerProfile,
+  } = useAuth();
+  const navigate = useNavigate();
+  const employerCheck = typeof isEmployer === "function" ? isEmployer() : false;
+  const hasEmployerProfile = !!employerProfile;
+
+  useEffect(() => {
+    if (isAuthenticated && employerCheck && !hasEmployerProfile && !employerProfileLoading) {
+      fetchEmployerProfile().catch(() => {
+        /* handled in context */
+      });
+    }
+  }, [
+    isAuthenticated,
+    employerCheck,
+    hasEmployerProfile,
+    employerProfileLoading,
+    fetchEmployerProfile,
+  ]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !employerCheck) {
+      setOpen(false);
+    }
+  }, [isAuthenticated, employerCheck]);
+
+  const profileImageUrl =
+    employerProfile?.profile_picture ||
+    employerProfile?.profilePictureUrl ||
+    user?.profile_picture ||
+    user?.profilePictureUrl;
+
+  const profileInitial =
+    user?.name?.charAt(0)?.toUpperCase() ||
+    user?.userName?.charAt(0)?.toUpperCase() ||
+    "U";
+
+  const handleLogout = () => {
+    logout();
+    navigate('/register');
+  };
+
+  const handleProfileClick = () => {
+    const adminCheck = typeof isAdmin === "function" ? isAdmin() : false;
+    if (adminCheck) {
+      navigate('/admin');
+    } else if (employerCheck) {
+      if (hasEmployerProfile) {
+        navigate('/employer-dashboard');
+      } else {
+        navigate('/employer/profile');
+      }
+    } else {
+      navigate('/profile');
+    }
+  };
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -17,18 +83,38 @@ function NavBar() {
 
           {/* Desktop Nav */}
           <ul className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-700">
-            {["Home", "Jobs", "Companies", "Salaries", "Career Advice"].map(
-              (item) => (
-                <li key={item}>
-                  <a
-                    href="#"
-                    className="hover:text-purple-600 transition-colors duration-300"
-                  >
-                    {item}
-                  </a>
-                </li>
-              )
-            )}
+            <li>
+              <a
+                href="/"
+                className="hover:text-purple-600 transition-colors duration-300"
+              >
+                Home
+              </a>
+            </li>
+            <li>
+              <button
+                onClick={() => navigate('/all-jobs')}
+                className="hover:text-purple-600 transition-colors duration-300"
+              >
+                Browse Jobs
+              </button>
+            </li>
+            <li>
+              <a
+                href="#"
+                className="hover:text-purple-600 transition-colors duration-300"
+              >
+                Companies
+              </a>
+            </li>
+            <li>
+              <a
+                href="/about"
+                className="hover:text-purple-600 transition-colors duration-300"
+              >
+                About
+              </a>
+            </li>
           </ul>
         </div>
 
@@ -81,20 +167,66 @@ function NavBar() {
             <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
           </button>
 
-          {/* CTA */}
-          <button
-            type="button"
-            className="h-10 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-medium hover:opacity-90 hover:scale-105 shadow-md transition-transform duration-300"
-          >
-            Post a Job
-          </button>
-
-          {/* Avatar */}
-          <img
-            src="https://i.pravatar.cc/80?img=5"
-            alt="Profile avatar"
-            className="w-9 h-9 rounded-full object-cover border border-gray-200 hover:scale-105 transition-transform duration-300 cursor-pointer"
-          />
+          {/* CTA - Show different buttons based on auth status */}
+          {isAuthenticated ? (
+            <div className="flex items-center gap-2">
+              {(isEmployer() || isAdmin()) && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/post-job')}
+                  className="h-10 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-medium hover:opacity-90 hover:scale-105 shadow-md transition-transform duration-300"
+                >
+                  Post a Job
+                </button>
+              )}
+              
+              {/* User Menu Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={handleProfileClick}
+                  className="w-9 h-9 rounded-full border border-gray-200 hover:scale-105 transition-transform duration-300 cursor-pointer overflow-hidden bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-bold flex items-center justify-center"
+                >
+                  {profileImageUrl ? (
+                    <img
+                      src={profileImageUrl}
+                      alt={`${user?.name || user?.userName || "User"} avatar`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    profileInitial
+                  )}
+                </button>
+              </div>
+              
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                className="h-10 px-3 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition-colors duration-300"
+                title="Logout"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate('/register')}
+                className="h-10 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-medium hover:opacity-90 hover:scale-105 shadow-md transition-transform duration-300"
+              >
+                Sign Up
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/register')}
+                className="h-10 px-4 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition-colors duration-300"
+              >
+                Login
+              </button>
+            </div>
+          )}
 
           {/* Mobile menu toggle */}
           <button
@@ -163,26 +295,108 @@ function NavBar() {
           </div>
 
           <ul className="flex flex-col gap-2 text-sm font-medium text-gray-700">
-            {["Home", "Jobs", "Companies", "Salaries", "Career Advice"].map(
-              (item) => (
-                <li key={item}>
-                  <a
-                    href="#"
-                    className="px-2 py-2 rounded-lg hover:bg-gray-100 hover:text-purple-600 transition-colors duration-300"
-                  >
-                    {item}
-                  </a>
-                </li>
-              )
-            )}
+            <li>
+              <a
+                href="/"
+                className="block px-2 py-2 rounded-lg hover:bg-gray-100 hover:text-purple-600 transition-colors duration-300"
+              >
+                Home
+              </a>
+            </li>
+            <li>
+              <button
+                onClick={() => {
+                  navigate('/all-jobs');
+                  setOpen(false);
+                }}
+                className="block w-full text-left px-2 py-2 rounded-lg hover:bg-gray-100 hover:text-purple-600 transition-colors duration-300"
+              >
+                Browse Jobs
+              </button>
+            </li>
+            <li>
+              <a
+                href="#"
+                className="block px-2 py-2 rounded-lg hover:bg-gray-100 hover:text-purple-600 transition-colors duration-300"
+              >
+                Companies
+              </a>
+            </li>
+            <li>
+              <a
+                href="/about"
+                className="block px-2 py-2 rounded-lg hover:bg-gray-100 hover:text-purple-600 transition-colors duration-300"
+              >
+                About
+              </a>
+            </li>
           </ul>
 
-          <button
-            type="button"
-            className="w-full h-10 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-medium shadow hover:opacity-90 transition"
-          >
-            Post a Job
-          </button>
+          {isAuthenticated ? (
+            <div className="space-y-2">
+              {(isEmployer() || isAdmin()) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigate('/post-job');
+                    setOpen(false);
+                  }}
+                  className="w-full h-10 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-medium shadow hover:opacity-90 transition"
+                >
+                  Post a Job
+                </button>
+              )}
+              
+              <button
+                onClick={() => {
+                  handleProfileClick();
+                  setOpen(false);
+                }}
+                className="w-full h-10 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition"
+              >
+                {isAdmin()
+                  ? 'Admin Dashboard'
+                  : isEmployer()
+                    ? hasEmployerProfile
+                      ? 'Employer Dashboard'
+                      : 'Employer Profile'
+                    : 'Profile'}
+              </button>
+              
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setOpen(false);
+                }}
+                className="w-full h-10 rounded-xl bg-red-100 text-red-700 text-sm font-medium hover:bg-red-200 transition"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  navigate('/register');
+                  setOpen(false);
+                }}
+                className="w-full h-10 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-medium shadow hover:opacity-90 transition"
+              >
+                Sign Up
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  navigate('/register');
+                  setOpen(false);
+                }}
+                className="w-full h-10 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition"
+              >
+                Login
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </nav>
