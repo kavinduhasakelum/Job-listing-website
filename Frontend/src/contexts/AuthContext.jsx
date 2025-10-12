@@ -223,6 +223,59 @@ export const AuthProvider = ({ children }) => {
     }
   }, []); // Empty dependency array for useCallback
 
+  // Forgot password function
+  const forgotPassword = useCallback(async (email) => {
+    try {
+      dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
+      dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
+
+      const response = await axios.post(`${API_BASE_URL}/auth/forgot-password`, {
+        email,
+      });
+
+      return {
+        success: true,
+        message: response.data?.message || "Password reset email sent.",
+      };
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Failed to send reset email. Please try again.";
+
+      return { success: false, error: errorMessage };
+    } finally {
+      dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
+    }
+  }, []);
+
+  // Reset password function
+  const resetPassword = useCallback(async (token, newPassword) => {
+    try {
+      dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
+      dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
+
+      const response = await axios.post(`${API_BASE_URL}/auth/reset-password`, {
+        token,
+        newPassword,
+      });
+
+      return {
+        success: true,
+        message: response.data?.message || "Password reset successful.",
+      };
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Failed to reset password. Please try again.";
+
+      return { success: false, error: errorMessage };
+    } finally {
+      dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
+    }
+  }, []);
+
   // Logout function
   const logout = useCallback(() => {
     localStorage.removeItem("token");
@@ -352,6 +405,8 @@ export const AuthProvider = ({ children }) => {
       updateUser,
       clearError,
       fetchEmployerProfile,
+      forgotPassword,
+      resetPassword,
 
       // Role checks
       hasRole,
@@ -368,6 +423,8 @@ export const AuthProvider = ({ children }) => {
       updateUser,
       clearError,
       fetchEmployerProfile,
+      forgotPassword,
+      resetPassword,
       hasRole,
       hasAnyRole,
       isAdmin,

@@ -1,9 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -98,7 +93,9 @@ const normaliseJobFromApi = (job = {}) => {
   return {
     id:
       rawId ??
-      `${(job.title || "job").toString().toLowerCase().replace(/\s+/g, "-")}-${job.created_at || job.createdAt || Date.now()}`,
+      `${(job.title || "job").toString().toLowerCase().replace(/\s+/g, "-")}-${
+        job.created_at || job.createdAt || Date.now()
+      }`,
     title: job.title ?? "Untitled role",
     location: job.location ?? job.city ?? "Location unspecified",
     status: statusRaw,
@@ -106,7 +103,7 @@ const normaliseJobFromApi = (job = {}) => {
     views,
     applicants,
     conversionRate,
-  conversionValue,
+    conversionValue,
     tags,
     postedRelative: formatRelativeTime(createdAt),
     createdAt,
@@ -192,19 +189,21 @@ function ConfirmDialog({ open, onClose, onConfirm, jobTitle }) {
 }
 
 function JobRow({ job, onEdit, onDelete, onPreview, onCopy }) {
-  const statusColor = {
-    approved: "bg-emerald-50 text-emerald-600",
-    pending: "bg-amber-50 text-amber-600",
-    rejected: "bg-rose-50 text-rose-600",
-    closed: "bg-slate-200 text-slate-600",
-  }[job.status] ?? "bg-purple-50 text-purple-600";
+  const statusColor =
+    {
+      approved: "bg-emerald-50 text-emerald-600",
+      pending: "bg-amber-50 text-amber-600",
+      rejected: "bg-rose-50 text-rose-600",
+      closed: "bg-slate-200 text-slate-600",
+    }[job.status] ?? "bg-purple-50 text-purple-600";
 
-  const statusDotColor = {
-    approved: "bg-emerald-500",
-    pending: "bg-amber-500",
-    rejected: "bg-rose-500",
-    closed: "bg-slate-400",
-  }[job.status] ?? "bg-purple-500";
+  const statusDotColor =
+    {
+      approved: "bg-emerald-500",
+      pending: "bg-amber-500",
+      rejected: "bg-rose-500",
+      closed: "bg-slate-400",
+    }[job.status] ?? "bg-purple-500";
 
   return (
     <div className="flex flex-col gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-lg md:flex-row md:items-center">
@@ -296,8 +295,13 @@ function JobRow({ job, onEdit, onDelete, onPreview, onCopy }) {
 
 function EmployerDashboard() {
   const navigate = useNavigate();
-  const { user, loading: authLoading, isAuthenticated, isEmployer, isAdmin } =
-    useAuth();
+  const {
+    user,
+    loading: authLoading,
+    isAuthenticated,
+    isEmployer,
+    isAdmin,
+  } = useAuth();
 
   const [jobs, setJobs] = useState([]);
   const [fetching, setFetching] = useState(true);
@@ -312,7 +316,8 @@ function EmployerDashboard() {
 
   const canManageJobs = useMemo(() => {
     if (!isAuthenticated) return false;
-    const employerAllowed = typeof isEmployer === "function" ? isEmployer() : false;
+    const employerAllowed =
+      typeof isEmployer === "function" ? isEmployer() : false;
     const adminAllowed = typeof isAdmin === "function" ? isAdmin() : false;
     return employerAllowed || adminAllowed;
   }, [isAuthenticated, isEmployer, isAdmin]);
@@ -436,7 +441,7 @@ function EmployerDashboard() {
           job.location?.toLowerCase().includes(term)
         : true;
       const matchesStatus =
-  statusFilter === "all" || (job.status || "pending") === statusFilter;
+        statusFilter === "all" || (job.status || "pending") === statusFilter;
       return matchesSearch && matchesStatus;
     });
   }, [jobs, search, statusFilter]);
@@ -486,7 +491,9 @@ function EmployerDashboard() {
     return {
       topViewedJob: byViews[0] ?? null,
       topConversionJob:
-        byConversion[0] ?? (byViews.length > 1 ? byViews[1] : byViews[0]) ?? null,
+        byConversion[0] ??
+        (byViews.length > 1 ? byViews[1] : byViews[0]) ??
+        null,
     };
   }, [jobs]);
 
@@ -500,12 +507,14 @@ function EmployerDashboard() {
                 Employer Control Center
               </p>
               <h1 className="mt-1 text-3xl font-semibold">
-                {user?.name ? `Welcome back, ${user.name}` : "Manage your job posts"}
+                {user?.name
+                  ? `Welcome back, ${user.name}`
+                  : "Manage your job posts"}
               </h1>
               <p className="mt-2 max-w-xl text-sm text-white/80">
                 Monitor performance, keep listings fresh, and stay ahead of
-                applicants. Everything you need to manage your hiring strategy in
-                one place.
+                applicants. Everything you need to manage your hiring strategy
+                in one place.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -558,9 +567,12 @@ function EmployerDashboard() {
         {missingProfile && !profileError && (
           <div className="flex flex-col gap-4 rounded-3xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
             <div>
-              <h2 className="text-lg font-semibold">Complete your employer profile</h2>
+              <h2 className="text-lg font-semibold">
+                Complete your employer profile
+              </h2>
               <p className="text-sm">
-                Add your company details to unlock job posting tools and help candidates learn about your organisation.
+                Add your company details to unlock job posting tools and help
+                candidates learn about your organisation.
               </p>
             </div>
             <div>
