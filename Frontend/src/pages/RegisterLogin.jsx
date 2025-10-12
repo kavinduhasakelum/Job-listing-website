@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 // SQL Query for reference
@@ -171,12 +171,22 @@ function RegisterLogin() {
 
               {/* Password Field */}
               <div>
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Password <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Password <span className="text-red-500">*</span>
+                  </label>
+                  {isLogin && (
+                    <Link
+                      to="/forgot-password"
+                      className="text-xs text-purple-600 hover:text-purple-700 transition-colors duration-200 font-medium"
+                    >
+                      Forgot Password?
+                    </Link>
+                  )}
+                </div>
                 <input
                   type="password"
                   id="password"

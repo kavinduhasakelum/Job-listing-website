@@ -83,18 +83,38 @@ function NavBar() {
 
           {/* Desktop Nav */}
           <ul className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-700">
-            {["Home", "Jobs", "Companies", "Salaries", "Career Advice"].map(
-              (item) => (
-                <li key={item}>
-                  <a
-                    href="#"
-                    className="hover:text-purple-600 transition-colors duration-300"
-                  >
-                    {item}
-                  </a>
-                </li>
-              )
-            )}
+            <li>
+              <a
+                href="/"
+                className="hover:text-purple-600 transition-colors duration-300"
+              >
+                Home
+              </a>
+            </li>
+            <li>
+              <button
+                onClick={() => navigate('/all-jobs')}
+                className="hover:text-purple-600 transition-colors duration-300"
+              >
+                Browse Jobs
+              </button>
+            </li>
+            <li>
+              <a
+                href="#"
+                className="hover:text-purple-600 transition-colors duration-300"
+              >
+                Companies
+              </a>
+            </li>
+            <li>
+              <a
+                href="/about"
+                className="hover:text-purple-600 transition-colors duration-300"
+              >
+                About
+              </a>
+            </li>
           </ul>
         </div>
 
@@ -275,18 +295,41 @@ function NavBar() {
           </div>
 
           <ul className="flex flex-col gap-2 text-sm font-medium text-gray-700">
-            {["Home", "Jobs", "Companies", "Salaries", "Career Advice"].map(
-              (item) => (
-                <li key={item}>
-                  <a
-                    href="#"
-                    className="px-2 py-2 rounded-lg hover:bg-gray-100 hover:text-purple-600 transition-colors duration-300"
-                  >
-                    {item}
-                  </a>
-                </li>
-              )
-            )}
+            <li>
+              <a
+                href="/"
+                className="block px-2 py-2 rounded-lg hover:bg-gray-100 hover:text-purple-600 transition-colors duration-300"
+              >
+                Home
+              </a>
+            </li>
+            <li>
+              <button
+                onClick={() => {
+                  navigate('/all-jobs');
+                  setOpen(false);
+                }}
+                className="block w-full text-left px-2 py-2 rounded-lg hover:bg-gray-100 hover:text-purple-600 transition-colors duration-300"
+              >
+                Browse Jobs
+              </button>
+            </li>
+            <li>
+              <a
+                href="#"
+                className="block px-2 py-2 rounded-lg hover:bg-gray-100 hover:text-purple-600 transition-colors duration-300"
+              >
+                Companies
+              </a>
+            </li>
+            <li>
+              <a
+                href="/about"
+                className="block px-2 py-2 rounded-lg hover:bg-gray-100 hover:text-purple-600 transition-colors duration-300"
+              >
+                About
+              </a>
+            </li>
           </ul>
 
           {isAuthenticated ? (
