@@ -142,7 +142,7 @@ function HomePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <NavLink to="/find-jobs">
+          <NavLink to="/all-jobs">
             <motion.button
               whileHover={{
                 scale: 1.1,
@@ -208,9 +208,11 @@ function HomePage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
-          <button className="px-6 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white font-medium hover:opacity-90 hover:scale-105 transition-transform duration-300 shadow-md">
-            View More Jobs
-          </button>
+          <NavLink to="/all-jobs">
+            <button className="px-6 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white font-medium hover:opacity-90 hover:scale-105 transition-transform duration-300 shadow-md">
+              View More Jobs
+            </button>
+          </NavLink>
         </motion.div>
       </section>
     </div>

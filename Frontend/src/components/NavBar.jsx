@@ -1,11 +1,53 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 function NavBar() {
   const [open, setOpen] = useState(false);
-  const { user, isAuthenticated, logout, isAdmin, isEmployer } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    logout,
+    isAdmin,
+    isEmployer,
+    employerProfile,
+    employerProfileLoading,
+    fetchEmployerProfile,
+  } = useAuth();
   const navigate = useNavigate();
+  const employerCheck = typeof isEmployer === "function" ? isEmployer() : false;
+  const hasEmployerProfile = !!employerProfile;
+
+  useEffect(() => {
+    if (isAuthenticated && employerCheck && !hasEmployerProfile && !employerProfileLoading) {
+      fetchEmployerProfile().catch(() => {
+        /* handled in context */
+      });
+    }
+  }, [
+    isAuthenticated,
+    employerCheck,
+    hasEmployerProfile,
+    employerProfileLoading,
+    fetchEmployerProfile,
+  ]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !employerCheck) {
+      setOpen(false);
+    }
+  }, [isAuthenticated, employerCheck]);
+
+  const profileImageUrl =
+    employerProfile?.profile_picture ||
+    employerProfile?.profilePictureUrl ||
+    user?.profile_picture ||
+    user?.profilePictureUrl;
+
+  const profileInitial =
+    user?.name?.charAt(0)?.toUpperCase() ||
+    user?.userName?.charAt(0)?.toUpperCase() ||
+    "U";
 
   const handleLogout = () => {
     logout();
@@ -13,10 +55,15 @@ function NavBar() {
   };
 
   const handleProfileClick = () => {
-    if (isAdmin()) {
+    const adminCheck = typeof isAdmin === "function" ? isAdmin() : false;
+    if (adminCheck) {
       navigate('/admin');
-    } else if (isEmployer()) {
-      navigate('/employer-dashboard');
+    } else if (employerCheck) {
+      if (hasEmployerProfile) {
+        navigate('/employer-dashboard');
+      } else {
+        navigate('/employer/profile');
+      }
     } else {
       navigate('/profile');
     }
@@ -36,18 +83,38 @@ function NavBar() {
 
           {/* Desktop Nav */}
           <ul className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-700">
-            {["Home", "Jobs", "Companies", "Salaries", "Career Advice"].map(
-              (item) => (
-                <li key={item}>
-                  <a
-                    href="#"
-                    className="hover:text-purple-600 transition-colors duration-300"
-                  >
-                    {item}
-                  </a>
-                </li>
-              )
-            )}
+            <li>
+              <a
+                href="/"
+                className="hover:text-purple-600 transition-colors duration-300"
+              >
+                Home
+              </a>
+            </li>
+            <li>
+              <button
+                onClick={() => navigate('/all-jobs')}
+                className="hover:text-purple-600 transition-colors duration-300"
+              >
+                Browse Jobs
+              </button>
+            </li>
+            <li>
+              <a
+                href="#"
+                className="hover:text-purple-600 transition-colors duration-300"
+              >
+                Companies
+              </a>
+            </li>
+            <li>
+              <a
+                href="/about"
+                className="hover:text-purple-600 transition-colors duration-300"
+              >
+                About
+              </a>
+            </li>
           </ul>
         </div>
 
@@ -117,9 +184,17 @@ function NavBar() {
               <div className="relative">
                 <button
                   onClick={handleProfileClick}
-                  className="w-9 h-9 rounded-full object-cover border border-gray-200 hover:scale-105 transition-transform duration-300 cursor-pointer bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-bold flex items-center justify-center"
+                  className="w-9 h-9 rounded-full border border-gray-200 hover:scale-105 transition-transform duration-300 cursor-pointer overflow-hidden bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-bold flex items-center justify-center"
                 >
-                  {user?.name?.charAt(0)?.toUpperCase() || user?.userName?.charAt(0)?.toUpperCase() || 'U'}
+                  {profileImageUrl ? (
+                    <img
+                      src={profileImageUrl}
+                      alt={`${user?.name || user?.userName || "User"} avatar`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    profileInitial
+                  )}
                 </button>
               </div>
               
@@ -220,18 +295,41 @@ function NavBar() {
           </div>
 
           <ul className="flex flex-col gap-2 text-sm font-medium text-gray-700">
-            {["Home", "Jobs", "Companies", "Salaries", "Career Advice"].map(
-              (item) => (
-                <li key={item}>
-                  <a
-                    href="#"
-                    className="px-2 py-2 rounded-lg hover:bg-gray-100 hover:text-purple-600 transition-colors duration-300"
-                  >
-                    {item}
-                  </a>
-                </li>
-              )
-            )}
+            <li>
+              <a
+                href="/"
+                className="block px-2 py-2 rounded-lg hover:bg-gray-100 hover:text-purple-600 transition-colors duration-300"
+              >
+                Home
+              </a>
+            </li>
+            <li>
+              <button
+                onClick={() => {
+                  navigate('/all-jobs');
+                  setOpen(false);
+                }}
+                className="block w-full text-left px-2 py-2 rounded-lg hover:bg-gray-100 hover:text-purple-600 transition-colors duration-300"
+              >
+                Browse Jobs
+              </button>
+            </li>
+            <li>
+              <a
+                href="#"
+                className="block px-2 py-2 rounded-lg hover:bg-gray-100 hover:text-purple-600 transition-colors duration-300"
+              >
+                Companies
+              </a>
+            </li>
+            <li>
+              <a
+                href="/about"
+                className="block px-2 py-2 rounded-lg hover:bg-gray-100 hover:text-purple-600 transition-colors duration-300"
+              >
+                About
+              </a>
+            </li>
           </ul>
 
           {isAuthenticated ? (
@@ -240,7 +338,7 @@ function NavBar() {
                 <button
                   type="button"
                   onClick={() => {
-                    navigate('/postjob');
+                    navigate('/post-job');
                     setOpen(false);
                   }}
                   className="w-full h-10 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-medium shadow hover:opacity-90 transition"
@@ -256,7 +354,13 @@ function NavBar() {
                 }}
                 className="w-full h-10 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition"
               >
-                {isAdmin() ? 'Admin Dashboard' : isEmployer() ? 'Dashboard' : 'Profile'}
+                {isAdmin()
+                  ? 'Admin Dashboard'
+                  : isEmployer()
+                    ? hasEmployerProfile
+                      ? 'Employer Dashboard'
+                      : 'Employer Profile'
+                    : 'Profile'}
               </button>
               
               <button

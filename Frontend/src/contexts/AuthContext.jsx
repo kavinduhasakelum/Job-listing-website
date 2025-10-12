@@ -16,6 +16,7 @@ const AUTH_ACTIONS = {
   SET_ERROR: "SET_ERROR",
   CLEAR_ERROR: "CLEAR_ERROR",
   SET_USER: "SET_USER",
+  SET_EMPLOYER_PROFILE: "SET_EMPLOYER_PROFILE",
 };
 
 // Initial auth state
@@ -25,6 +26,8 @@ const initialState = {
   isAuthenticated: false,
   loading: true,
   error: null,
+  employerProfile: null,
+  employerProfileLoading: false,
 };
 
 // Auth reducer
@@ -43,6 +46,8 @@ function authReducer(state, action) {
         isAuthenticated: true,
         loading: false,
         error: null,
+        employerProfile: action.payload.employerProfile ?? state.employerProfile,
+        employerProfileLoading: false,
       };
     case AUTH_ACTIONS.LOGOUT:
       return {
@@ -52,6 +57,8 @@ function authReducer(state, action) {
         isAuthenticated: false,
         loading: false,
         error: null,
+        employerProfile: null,
+        employerProfileLoading: false,
       };
     case AUTH_ACTIONS.SET_ERROR:
       return {
@@ -71,6 +78,15 @@ function authReducer(state, action) {
         isAuthenticated: !!action.payload,
         loading: false,
       };
+    case AUTH_ACTIONS.SET_EMPLOYER_PROFILE:
+      return {
+        ...state,
+        employerProfile:
+          action.payload.profile !== undefined
+            ? action.payload.profile
+            : state.employerProfile,
+        employerProfileLoading: action.payload.loading ?? false,
+      };
     default:
       return state;
   }
@@ -86,38 +102,46 @@ const API_BASE_URL =
 // Auth Provider component
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
+  const {
+    user,
+    token,
+    isAuthenticated,
+    employerProfile,
+    employerProfileLoading,
+  } = state;
+  const isEmployerRole = user?.role?.toLowerCase() === "employer";
 
   // Set axios default headers
   useEffect(() => {
-    if (state.token) {
-      axios.defaults.headers.common["Authorization"] = `Bearer ${state.token}`;
-      localStorage.setItem("token", state.token);
+    if (token) {
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      localStorage.setItem("token", token);
     } else {
       delete axios.defaults.headers.common["Authorization"];
       localStorage.removeItem("token");
     }
-  }, [state.token]);
+  }, [token]);
 
   // Check if user is authenticated on app start
   useEffect(() => {
     const initializeAuth = async () => {
-      const token = localStorage.getItem("token");
+      const storedToken = localStorage.getItem("token");
 
-      if (!token) {
+      if (!storedToken) {
         dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
         return;
       }
 
       try {
         // Verify token with backend
-        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        axios.defaults.headers.common["Authorization"] = `Bearer ${storedToken}`;
         const response = await axios.get(`${API_BASE_URL}/auth/verify`);
 
         dispatch({
           type: AUTH_ACTIONS.LOGIN_SUCCESS,
           payload: {
             user: response.data.user,
-            token: token,
+            token: storedToken,
           },
         });
       } catch {
@@ -199,12 +223,133 @@ export const AuthProvider = ({ children }) => {
     }
   }, []); // Empty dependency array for useCallback
 
+  // Forgot password function
+  const forgotPassword = useCallback(async (email) => {
+    try {
+      dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
+      dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
+
+      const response = await axios.post(`${API_BASE_URL}/auth/forgot-password`, {
+        email,
+      });
+
+      return {
+        success: true,
+        message: response.data?.message || "Password reset email sent.",
+      };
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Failed to send reset email. Please try again.";
+
+      return { success: false, error: errorMessage };
+    } finally {
+      dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
+    }
+  }, []);
+
+  // Reset password function
+  const resetPassword = useCallback(async (token, newPassword) => {
+    try {
+      dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
+      dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
+
+      const response = await axios.post(`${API_BASE_URL}/auth/reset-password`, {
+        token,
+        newPassword,
+      });
+
+      return {
+        success: true,
+        message: response.data?.message || "Password reset successful.",
+      };
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Failed to reset password. Please try again.";
+
+      return { success: false, error: errorMessage };
+    } finally {
+      dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
+    }
+  }, []);
+
   // Logout function
   const logout = useCallback(() => {
     localStorage.removeItem("token");
     delete axios.defaults.headers.common["Authorization"];
     dispatch({ type: AUTH_ACTIONS.LOGOUT });
   }, []);
+
+  const fetchEmployerProfile = useCallback(
+    async ({ force = false } = {}) => {
+      if (!isEmployerRole || !token) {
+        if (employerProfile !== null || employerProfileLoading) {
+          dispatch({
+            type: AUTH_ACTIONS.SET_EMPLOYER_PROFILE,
+            payload: { profile: null, loading: false },
+          });
+        }
+        return null;
+      }
+
+      if (employerProfile && !force) {
+        return employerProfile;
+      }
+
+      try {
+        dispatch({
+          type: AUTH_ACTIONS.SET_EMPLOYER_PROFILE,
+          payload: { profile: employerProfile ?? undefined, loading: true },
+        });
+
+        const response = await axios.get(
+          `${API_BASE_URL}/user/employer/details`
+        );
+
+        dispatch({
+          type: AUTH_ACTIONS.SET_EMPLOYER_PROFILE,
+          payload: { profile: response.data, loading: false },
+        });
+
+        return response.data;
+      } catch (error) {
+        console.error("Failed to load employer profile", error);
+        dispatch({
+          type: AUTH_ACTIONS.SET_EMPLOYER_PROFILE,
+          payload: { profile: null, loading: false },
+        });
+        return null;
+      }
+    },
+    [
+      isEmployerRole,
+      token,
+      employerProfile,
+      employerProfileLoading,
+      dispatch,
+    ]
+  );
+
+  useEffect(() => {
+    if (isAuthenticated && isEmployerRole) {
+      fetchEmployerProfile();
+    } else if (!isEmployerRole && (employerProfile || employerProfileLoading)) {
+      dispatch({
+        type: AUTH_ACTIONS.SET_EMPLOYER_PROFILE,
+        payload: { profile: null, loading: false },
+      });
+    }
+  }, [
+    isAuthenticated,
+    isEmployerRole,
+    fetchEmployerProfile,
+    employerProfile,
+    employerProfileLoading,
+    dispatch,
+  ]);
 
   // Update user profile
   const updateUser = useCallback(
@@ -259,6 +404,9 @@ export const AuthProvider = ({ children }) => {
       logout,
       updateUser,
       clearError,
+      fetchEmployerProfile,
+      forgotPassword,
+      resetPassword,
 
       // Role checks
       hasRole,
@@ -274,6 +422,9 @@ export const AuthProvider = ({ children }) => {
       logout,
       updateUser,
       clearError,
+      fetchEmployerProfile,
+      forgotPassword,
+      resetPassword,
       hasRole,
       hasAnyRole,
       isAdmin,
@@ -286,6 +437,7 @@ export const AuthProvider = ({ children }) => {
 };
 
 // Custom hook to use auth context
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
