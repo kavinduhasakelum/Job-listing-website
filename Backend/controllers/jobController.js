@@ -13,7 +13,9 @@ import {
 } from "../models/jobModel.js";
 import { findEmployerProfileByUserId } from "../models/employerModel.js";
 import { findUserEmailById } from "../models/userModel.js";
+import nodemailer from "nodemailer";
 
+// Upload image buffer to Cloudinary
 const uploadFromBuffer = (fileBuffer, folder) =>
   new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
@@ -28,6 +30,7 @@ const uploadFromBuffer = (fileBuffer, folder) =>
     stream.end(fileBuffer);
   });
 
+// create a new job
 export const createJob = async (req, res) => {
   try {
     if (!req.body) {
@@ -100,6 +103,7 @@ export const createJob = async (req, res) => {
   }
 };
 
+// Get all approved jobs
 export const getAllJobs = async (req, res) => {
   try {
   const jobs = await findApprovedJobs();
@@ -109,6 +113,7 @@ export const getAllJobs = async (req, res) => {
   }
 };
 
+// get job by id
 export const getJobById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -124,6 +129,7 @@ export const getJobById = async (req, res) => {
   }
 };
 
+// get jobs by employer
 export const getJobsByEmployer = async (req, res) => {
   try {
   const employerId = req.user.id;
@@ -134,6 +140,7 @@ export const getJobsByEmployer = async (req, res) => {
   }
 };
 
+// update job
 export const updateJob = async (req, res) => {
   try {
     const { id } = req.params;
@@ -189,6 +196,7 @@ export const updateJob = async (req, res) => {
   }
 };
 
+// Delete job
 export const deleteJob = async (req, res) => {
   try {
   const employerId = req.user.id;
@@ -208,14 +216,84 @@ export const deleteJob = async (req, res) => {
   }
 };
 
-export const approveJob = async (req, res) => {
-  const { jobId } = req.params;
-  const { status } = req.body;
+// Email transporter (Gmail setup)
+const transporter = nodemailer.createTransport({
+  service: "Gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS, // Use App Password
+  },
+});
 
-  if (status !== "approved" && status !== "rejected") {
-    return res.status(400).json({
-      error: "Invalid status. Use approved or rejected.",
+// Approve or Reject Job (Admin only)
+export const approveOrRejectJob = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const { status, reason } = req.body; // status = 'approved' | 'rejected'
+
+    // Validate input
+    if (!["approved", "rejected"].includes(status)) {
+      return res
+        .status(400)
+        .json({ error: "Invalid status. Use 'approved' or 'rejected'." });
+    }
+
+    // Fetch job and employer info
+    const [jobResult] = await pool.query(
+      `SELECT j.title, u.email 
+       FROM jobs j 
+       JOIN users u ON j.employer_id = u.user_id 
+       WHERE j.job_id = ?`,
+      [jobId]
+    );
+
+    if (jobResult.length === 0) {
+      return res.status(404).json({ error: "Job not found" });
+    }
+
+    const { title, email } = jobResult[0];
+
+    // Update job status and optional rejection reason
+    await pool.query(
+      "UPDATE jobs SET status = ?, rejection_reason = ? WHERE job_id = ?",
+      [status, status === "rejected" ? reason || "Not specified" : null, jobId]
+    );
+
+    // Send appropriate email
+    const mailOptions =
+      status === "approved"
+        ? {
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: `Job Approved ✅ - ${title}`,
+            html: `
+              <p>Hello,</p>
+              <p>Your job posting <b>${title}</b> has been <b>approved</b> by the admin and is now visible to job seekers.</p>
+            `,
+          }
+        : {
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: `Job Rejected ❌ - ${title}`,
+            html: `
+              <p>Hello,</p>
+              <p>Unfortunately, your job posting <b>${title}</b> has been <b>rejected</b> by the admin.</p>
+              <p><b>Reason:</b> ${reason || "Not specified"}</p>
+            `,
+          };
+
+    await transporter.sendMail(mailOptions);
+
+    // Send response
+    res.json({
+      message:
+        status === "approved"
+          ? "Job approved successfully ✅ Email sent to employer."
+          : "Job rejected ❌ Email sent with reason to employer.",
     });
+  } catch (err) {
+    console.error("Approve/Reject job error:", err);
+    res.status(500).json({ error: "Server error while approving/rejecting job." });
   }
 };
 
@@ -307,6 +385,7 @@ export const removeSavedJob = async (req, res) => {
   }
 };
 
+export const getEmployerJobs = async (req, res) => {
   try {
     const jobs = await findJobById(jobId);
 
@@ -336,6 +415,7 @@ export const removeSavedJob = async (req, res) => {
     res.status(500).json({ error: "Server error while approving job" });
   }
 };
+
 // Get Jobs by specific Company (approved jobs only)
 export const getJobsByCompany = async (req, res) => {
   try {
