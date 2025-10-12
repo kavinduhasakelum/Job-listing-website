@@ -5,12 +5,36 @@ import { useAuth } from "../contexts/AuthContext";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
+const WORK_TYPES = [
+  { value: "onsite", label: "On-site" },
+  { value: "hybrid", label: "Hybrid" },
+  { value: "remote", label: "Remote" },
+];
+
+const JOB_TYPES = [
+  { value: "full-time", label: "Full-time" },
+  { value: "part-time", label: "Part-time" },
+  { value: "contract", label: "Contract" },
+  { value: "internship", label: "Internship" },
+];
+
+const EXPERIENCE_LEVELS = [
+  { value: "entry", label: "Entry level" },
+  { value: "mid", label: "Mid level" },
+  { value: "senior", label: "Senior" },
+  { value: "lead", label: "Lead" },
+];
+
 const INITIAL_FORM = {
   title: "",
   description: "",
   location: "",
   salaryMin: "",
   salaryMax: "",
+  industry: "",
+  workType: WORK_TYPES[0].value,
+  jobType: JOB_TYPES[0].value,
+  experienceLevel: EXPERIENCE_LEVELS[0].value,
 };
 
 function JobForm() {
@@ -66,6 +90,14 @@ function JobForm() {
       return;
     }
 
+    if (!formValues.industry.trim()) {
+      setStatus({
+        type: "error",
+        message: "Industry is required to submit a job post.",
+      });
+      return;
+    }
+
     setStatus({ type: null, message: "" });
     setSubmitting(true);
 
@@ -73,6 +105,10 @@ function JobForm() {
     payload.append("title", formValues.title.trim());
     payload.append("description", formValues.description.trim());
     payload.append("location", formValues.location.trim());
+    payload.append("industry", formValues.industry.trim());
+    payload.append("work_type", formValues.workType);
+    payload.append("job_type", formValues.jobType);
+    payload.append("experience_level", formValues.experienceLevel);
     payload.append("salary_min", formValues.salaryMin || "");
     payload.append("salary_max", formValues.salaryMax || "");
 
@@ -172,6 +208,93 @@ function JobForm() {
           onChange={handleChange}
           required
         />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-2">
+          <label
+            htmlFor="industry"
+            className="text-sm font-medium text-gray-700"
+          >
+            Industry *
+          </label>
+          <input
+            id="industry"
+            name="industry"
+            type="text"
+            placeholder="e.g. Information Technology"
+            className="h-12 w-full rounded-xl border border-gray-200 px-4 text-gray-900 placeholder:text-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
+            value={formValues.industry}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label
+            htmlFor="workType"
+            className="text-sm font-medium text-gray-700"
+          >
+            Work setting *
+          </label>
+          <select
+            id="workType"
+            name="workType"
+            className="h-12 w-full rounded-xl border border-gray-200 px-4 text-gray-900 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
+            value={formValues.workType}
+            onChange={handleChange}
+          >
+            {WORK_TYPES.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <label
+            htmlFor="jobType"
+            className="text-sm font-medium text-gray-700"
+          >
+            Job type *
+          </label>
+          <select
+            id="jobType"
+            name="jobType"
+            className="h-12 w-full rounded-xl border border-gray-200 px-4 text-gray-900 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
+            value={formValues.jobType}
+            onChange={handleChange}
+          >
+            {JOB_TYPES.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <label
+            htmlFor="experienceLevel"
+            className="text-sm font-medium text-gray-700"
+          >
+            Experience level *
+          </label>
+          <select
+            id="experienceLevel"
+            name="experienceLevel"
+            className="h-12 w-full rounded-xl border border-gray-200 px-4 text-gray-900 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
+            value={formValues.experienceLevel}
+            onChange={handleChange}
+          >
+            {EXPERIENCE_LEVELS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="space-y-2">

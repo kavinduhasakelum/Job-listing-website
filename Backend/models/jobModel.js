@@ -6,10 +6,13 @@ import {
   updateJobQuery,
   deleteJobQuery,
   getJobsByEmployerQuery,
+  getApprovedJobsByCompanyQuery,
+  incrementJobViewsQuery,
 } from "../queries/jobQueries.js";
 
 export const createJobRecord = async (values) => {
-  await pool.query(insertJobQuery, values);
+  const [result] = await pool.query(insertJobQuery, values);
+  return result;
 };
 
 export const findApprovedJobs = async () => {
@@ -45,10 +48,20 @@ export const findJobById = async (jobId) => {
   return rows;
 };
 
+export const findApprovedJobsByCompany = async (employerId) => {
+  const [rows] = await pool.query(getApprovedJobsByCompanyQuery, [employerId]);
+  return rows;
+};
+
 export const updateJobStatus = async (status, jobId) => {
   await pool.query("UPDATE jobs SET status = ? WHERE job_id = ?", [
     status,
     jobId,
   ]);
+};
+
+export const incrementJobViews = async (jobId) => {
+  const [result] = await pool.query(incrementJobViewsQuery, [jobId]);
+  return result;
 };
 
