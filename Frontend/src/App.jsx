@@ -1,5 +1,18 @@
 import React from "react";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import {
+  createBrowserRouter,
+  Navigate,
+  RouterProvider,
+} from "react-router-dom";
+
+// Auth Context
+import { AuthProvider } from "./contexts/AuthContext";
+
+// Protected Route Components
+import ProtectedRoute, {
+  AdminRoute,
+  EmployerRoute,
+} from "./components/ProtectedRoute";
 
 // Pages (add or keep existing ones)
 import Root from "./pages/Root";
@@ -11,30 +24,87 @@ import JobPostForm from "./pages/JobPostForm";
 import ChatPage from "./pages/Chat";
 import FindJobsPage from "./pages/FindJobsPage";
 import AdminDashboard from "./pages/AdminDashboard";
+import EmployerDashboard from "./pages/EmployerDashboard";
 import AboutUs from "./pages/AboutUs"; // <-- NEW
+import EmployerProfileForm from "./pages/EmployerProfileForm";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import AllJobs from "./pages/AllJobs";
 
 const router = createBrowserRouter([
   {
     path: "/",
     element: <Root />, // layout with NavBar + Footer + <Outlet />
     children: [
-      { index: true, element: <HomePage /> },
+      {
+        index: true,
+        element: (
+          <ProtectedRoute>
+            <HomePage />
+          </ProtectedRoute>
+        ),
+      },
       { path: "job", element: <JobView /> },
-      { path: "jobs", element: <SearchJob /> },
+
+      { path: "all-jobs", element: <AllJobs /> },
       { path: "register", element: <RegisterLogin /> },
-      { path: "postjob", element: <JobPostForm /> },
+      { path: "forgot-password", element: <ForgotPassword /> },
+      { path: "reset-password", element: <ResetPassword /> },
+      {
+        path: "post-job",
+        element: (
+          <EmployerRoute>
+            <JobPostForm />
+          </EmployerRoute>
+        ),
+      },
       { path: "search", element: <SearchJob /> },
-      { path: "chat", element: <ChatPage /> },
-      { path: "find-jobs", element: <FindJobsPage /> },
-      { path: "about", element: <AboutUs /> }, // <-- ABOUT ROUTE
+      {
+        path: "chat",
+        element: (
+          <ProtectedRoute>
+            <ChatPage />
+          </ProtectedRoute>
+        ),
+      },
+      { path: "about", element: <AboutUs /> },
+      {
+        path: "employer/profile",
+        element: (
+          <EmployerRoute>
+            <EmployerProfileForm />
+          </EmployerRoute>
+        ),
+      },
     ],
   },
   {
     path: "/admin",
-    element: <AdminDashboard />, // independent admin route
+    element: (
+      <AdminRoute>
+        <AdminDashboard />
+      </AdminRoute>
+    ), // protected admin route
+  },
+
+  {
+    path: "/employer-dashboard",
+    element: (
+      <EmployerRoute>
+        <EmployerDashboard />
+      </EmployerRoute>
+    ),
+  },
+  {
+    path: "/employee",
+    element: <Navigate to="/employer-dashboard" replace />,
   },
 ]);
 
 export default function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
 }

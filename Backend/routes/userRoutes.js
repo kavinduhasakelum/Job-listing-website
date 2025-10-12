@@ -42,14 +42,15 @@ router.patch(
    
 );
 
-// Delete only profile picture
+//Delete only profile picture
 router.delete(
   "/employer/profile-picture",
   verifyToken,
   deleteProfilePicture
     
 );
-// Job Seeker routes
+
+// Create Job Seeker Profile
 router.post(
   "/jobseeker/details", 
   verifyToken, 
@@ -65,7 +66,6 @@ router.patch(
   "/jobseeker/details",
   verifyToken,
   upload.single("profile_picture"),
-  validateJobSeekerUpdate,
   updateJobSeekerDetails
 );
 
