@@ -358,7 +358,7 @@ export const forgotPassword = async (req, res) => {
       { expiresIn: "15m" }
     );
 
-    const resetLink = `${CLIENT_BASE_URL}/auth/reset-password?token=${token}`;
+    const resetLink = `${CLIENT_BASE_URL}/reset-password?token=${token}`;
 
     await sendEmail({
       to: normalizedEmail,

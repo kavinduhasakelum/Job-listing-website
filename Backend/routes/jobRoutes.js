@@ -1,4 +1,3 @@
-
 import express from "express";
 import {
   createJob,
@@ -10,6 +9,7 @@ import {
   approveJob,
   getJobsByCompany,
 } from "../controllers/jobController.js";
+
 import {
   verifyToken,
   isAdmin,
