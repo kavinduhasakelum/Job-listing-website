@@ -56,10 +56,14 @@ const normaliseJobForDashboard = (job = {}) => {
     job.views ?? job.view_count ?? job.total_views ?? job.viewsCount
   );
   const applicants = toSafeNumber(
-    job.applicants ?? job.applicants_count ?? job.total_applicants ?? job.applicationsCount
+    job.applicants ??
+      job.applicants_count ??
+      job.total_applicants ??
+      job.applicationsCount
   );
   const conversionValue = views > 0 ? applicants / views : 0;
-  const conversionRate = views > 0 ? `${Math.round(conversionValue * 100)}%` : "—";
+  const conversionRate =
+    views > 0 ? `${Math.round(conversionValue * 100)}%` : "—";
 
   const tags = [job.work_type, job.job_type, job.experience_level, job.industry]
     .map((tag) => (typeof tag === "string" ? tag.trim() : ""))
@@ -114,7 +118,10 @@ const computeJobStats = (jobs = []) => {
       topViewedJob = job;
     }
 
-    if (!topConversionJob || job.conversionValue > topConversionJob.conversionValue) {
+    if (
+      !topConversionJob ||
+      job.conversionValue > topConversionJob.conversionValue
+    ) {
       topConversionJob = job;
     }
   });
@@ -208,7 +215,16 @@ export const createJob = async (req, res) => {
     });
   } catch (err) {
     console.error("Create job error:", err);
-    res.status(500).json({ error: "Server error while creating job" });
+    console.error("Error details:", {
+      message: err.message,
+      code: err.code,
+      sqlMessage: err.sqlMessage,
+      sql: err.sql
+    });
+    res.status(500).json({ 
+      error: "Server error while creating job",
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };
 
@@ -228,6 +244,8 @@ export const getJobById = async (req, res) => {
     const { id } = req.params;
     const job = await findApprovedJobById(id);
 
+    console.log(id);
+
     if (job.length === 0) {
       return res.status(404).json({ error: "Job not found" });
     }
@@ -236,10 +254,7 @@ export const getJobById = async (req, res) => {
     try {
       await incrementJobViews(id);
       const previousViews = Number(
-        jobRecord.views ??
-          jobRecord.view_count ??
-          jobRecord.total_views ??
-          0
+        jobRecord.views ?? jobRecord.view_count ?? jobRecord.total_views ?? 0
       );
       const updatedViews = Number.isFinite(previousViews)
         ? previousViews + 1
@@ -262,12 +277,17 @@ export const getJobById = async (req, res) => {
 export const getJobsByEmployer = async (req, res) => {
   try {
     const employerId = req.user.id;
+    console.log("📋 Fetching jobs for employer:", employerId);
     const jobRows = await findJobsByEmployerId(employerId);
-    const jobs = jobRows.map((job) => normaliseJobForDashboard(job)).filter(Boolean);
+    console.log(`✅ Found ${jobRows.length} jobs for employer ${employerId}`);
+    const jobs = jobRows
+      .map((job) => normaliseJobForDashboard(job))
+      .filter(Boolean);
     const stats = computeJobStats(jobs);
 
     res.json({ jobs, stats });
   } catch (err) {
+    console.error("❌ Error fetching jobs:", err);
     res.status(500).json({ error: "Server error while fetching jobs" });
   }
 };
@@ -348,7 +368,9 @@ export const deleteJob = async (req, res) => {
     }
 
     const jobRows = await findJobsByEmployerId(employerId);
-    const jobs = jobRows.map((job) => normaliseJobForDashboard(job)).filter(Boolean);
+    const jobs = jobRows
+      .map((job) => normaliseJobForDashboard(job))
+      .filter(Boolean);
     const stats = computeJobStats(jobs);
 
     res.json({ message: "Job deleted successfully", jobs, stats });
@@ -434,7 +456,9 @@ export const approveOrRejectJob = async (req, res) => {
     });
   } catch (err) {
     console.error("Approve/Reject job error:", err);
-    res.status(500).json({ error: "Server error while approving/rejecting job." });
+    res
+      .status(500)
+      .json({ error: "Server error while approving/rejecting job." });
   }
 };
 
@@ -570,8 +594,23 @@ export const getJobsByCompany = async (req, res) => {
 // Apply for a job (Jobseeker)
 export const applyJob = async (req, res) => {
   try {
-    const userId = req.user.id; 
-    const { job_id, cover_letter } = req.body;
+    const userId = req.user.id;
+    // Get job_id from URL parameter first, fallback to body
+    const jobIdFromParams = req.params.jobId;
+    const jobIdFromBody = req.body.job_id;
+    const job_id = jobIdFromParams || jobIdFromBody;
+
+    console.log("Apply Job Debug:");
+    console.log("- jobId from params:", jobIdFromParams);
+    console.log("- jobId from body:", jobIdFromBody);
+    console.log("- final job_id:", job_id);
+    console.log("- userId:", userId);
+
+    if (!job_id) {
+      return res.status(400).json({ error: "Job ID is required" });
+    }
+
+    const { cover_letter } = req.body;
 
     // Check if jobseeker profile exists
     const [seekerRows] = await pool.query(
@@ -581,20 +620,45 @@ export const applyJob = async (req, res) => {
     if (seekerRows.length === 0) {
       return res.status(403).json({
         error: "Please create your job seeker profile first.",
-        action: "/jobseeker/profile/create"
+        action: "/jobseeker/profile/create",
       });
     }
 
     const seekerId = seekerRows[0].seeker_id;
 
-    // Check if job exists and is approved
-    const [job] = await pool.query(
-      "SELECT * FROM jobs WHERE job_id = ? AND status = 'approved'",
+    // Check if job exists first
+    const [allJobs] = await pool.query(
+      "SELECT job_id, title as job_title, status FROM jobs WHERE job_id = ?",
       [job_id]
     );
-    if (job.length === 0) {
-      return res.status(404).json({ error: "Job not found or not approved" });
+
+    if (allJobs.length === 0) {
+      console.log("Job not found in database, job_id:", job_id);
+      return res
+        .status(404)
+        .json({
+          error:
+            "Job not found. The job may have been removed or is no longer available.",
+        });
     }
+
+    const jobData = allJobs[0];
+    console.log("Job found:", jobData.job_title, "Status:", jobData.status);
+
+    // Check if job is approved
+    if (jobData.status !== "approved") {
+      console.log("Job not approved yet. Current status:", jobData.status);
+      return res.status(400).json({
+        error:
+          "This job is not currently accepting applications. It may be pending admin approval.",
+        jobStatus: jobData.status,
+      });
+    }
+
+    // Get full job details for approved job
+    const [job] = await pool.query("SELECT * FROM jobs WHERE job_id = ?", [
+      job_id,
+    ]);
 
     // Prevent duplicate applications
     const [existing] = await pool.query(
@@ -602,14 +666,18 @@ export const applyJob = async (req, res) => {
       [job_id, seekerId]
     );
     if (existing.length > 0) {
-      return res.status(400).json({ error: "You have already applied for this job" });
+      return res
+        .status(400)
+        .json({ error: "You have already applied for this job" });
     }
 
     // Handle uploaded resume (PDF)
     let uploadedResume = null;
     if (req.file) {
       const result = await cloudinary.uploader.upload(
-        `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`,
+        `data:${req.file.mimetype};base64,${req.file.buffer.toString(
+          "base64"
+        )}`,
         { folder: "resumes", resource_type: "raw" }
       );
       uploadedResume = result.secure_url;
@@ -639,12 +707,11 @@ export const applyJob = async (req, res) => {
       resume: resumePath,
       downloadUrl,
     });
-
   } catch (err) {
     console.error("applyJob Error:", err);
     res.status(500).json({
       error: "Server error while applying for job",
-      details: err.message
+      details: err.message,
     });
   }
 };
@@ -691,16 +758,33 @@ export const getMyApplications = async (req, res) => {
 export const getApplicantsByJob = async (req, res) => {
   try {
     const employerId = req.user.id;
-    const { job_id } = req.params;
+    const jobId = req.params.jobId; // Route uses :jobId
+    
+    console.log("🔍 Fetching applicants - Employer ID:", employerId, "| Job ID:", jobId);
 
     // Verify job ownership
     const [job] = await pool.query(
       "SELECT * FROM jobs WHERE job_id = ? AND employer_id = ?",
-      [job_id, employerId]
+      [jobId, employerId]
     );
+    
     if (job.length === 0) {
-      return res.status(403).json({ error: "Not authorized for this job" });
+      // Check if job exists at all
+      const [jobExists] = await pool.query("SELECT job_id, employer_id FROM jobs WHERE job_id = ?", [jobId]);
+      
+      if (jobExists.length === 0) {
+        console.log("❌ Job not found - Job ID:", jobId);
+        return res.status(404).json({ error: "Job not found" });
+      } else {
+        console.log("❌ Not authorized - Job belongs to employer:", jobExists[0].employer_id, "| Your ID:", employerId);
+        return res.status(403).json({ 
+          error: "Not authorized for this job",
+          message: "This job belongs to a different employer"
+        });
+      }
     }
+    
+    console.log("✅ Job ownership verified");
 
     // Fetch applicants
     const [applicants] = await pool.query(
@@ -712,8 +796,10 @@ export const getApplicantsByJob = async (req, res) => {
          JOIN job_seeker js ON a.seeker_id = js.seeker_id
          JOIN users u ON js.user_id = u.user_id
         WHERE a.job_id = ?`,
-      [job_id]
+      [jobId]
     );
+
+    console.log(`✅ Found ${applicants.length} applicants for job ${jobId}`);
 
     // Generate download-ready URLs
     const getDownloadUrl = (url, filename = "resume.pdf") => {
@@ -723,13 +809,12 @@ export const getApplicantsByJob = async (req, res) => {
       return `${parts[0]}/upload/fl_attachment,${filename}/${parts[1]}`;
     };
 
-    const applicantsWithDownload = applicants.map(app => ({
+    const applicantsWithDownload = applicants.map((app) => ({
       ...app,
       downloadUrl: getDownloadUrl(app.resume_url),
     }));
 
     res.json(applicantsWithDownload);
-
   } catch (err) {
     console.error("getApplicantsByJob Error:", err);
     res.status(500).json({ error: "Server error while fetching applicants" });
@@ -740,10 +825,14 @@ export const getApplicantsByJob = async (req, res) => {
 export const updateApplicationStatus = async (req, res) => {
   try {
     const employerId = req.user.id;
-    const { application_id } = req.params;
-    const { status } = req.body; // "Approved" or "Rejected"
+    const applicationId = req.params.applicationId; // Route uses :applicationId
+    const { status } = req.body;
 
-    if (!["Approved", "Rejected"].includes(status))
+    console.log("🔄 Updating application status:", applicationId, "to", status);
+
+    // Allow all status values from frontend
+    const validStatuses = ["pending", "reviewed", "shortlisted", "interviewed", "rejected", "Approved", "Rejected"];
+    if (!validStatuses.includes(status))
       return res.status(400).json({ error: "Invalid status" });
 
     // Fetch application + job + jobseeker info
@@ -760,55 +849,74 @@ export const updateApplicationStatus = async (req, res) => {
        JOIN job_seeker js ON a.seeker_id = js.seeker_id
        JOIN users u ON js.user_id = u.user_id
        WHERE a.application_id = ?`,
-      [application_id]
+      [applicationId]
     );
 
-    if (rows.length === 0)
+    if (rows.length === 0) {
+      console.log("❌ Application not found");
       return res.status(404).json({ error: "Application not found" });
+    }
 
     const app = rows[0];
 
     // Verify employer owns the job
-    if (app.employer_id !== employerId)
-      return res.status(403).json({ error: "Not authorized to modify this application" });
+    if (app.employer_id !== employerId) {
+      console.log("❌ Not authorized - wrong employer");
+      return res
+        .status(403)
+        .json({ error: "Not authorized to modify this application" });
+    }
 
     // Update status
     await pool.query(
       "UPDATE job_applications SET status = ? WHERE application_id = ?",
-      [status, application_id]
+      [status, applicationId]
     );
 
-    // Send email notification
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
+    console.log("✅ Status updated successfully");
 
-    const subject =
-      status === "Approved"
-        ? "🎉 Your job application was approved!"
-        : "❌ Your job application was rejected";
+    // Send email notification only for Approved/Rejected
+    if (status === "Approved" || status === "Rejected") {
+      try {
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+          },
+        });
 
-    const text =
-      status === "Approved"
-        ? `Hello ${app.jobseeker_name},
+        const subject =
+          status === "Approved"
+            ? "🎉 Your job application was approved!"
+            : "❌ Your job application was rejected";
+
+        const text =
+          status === "Approved"
+            ? `Hello ${app.jobseeker_name},
 
 Congratulations! Your application for the job "${app.job_title}" has been approved by the employer.`
-        : `Hello ${app.jobseeker_name},
+            : `Hello ${app.jobseeker_name},
 
 We regret to inform you that your application for the job "${app.job_title}" has been rejected.`;
 
-    await transporter.sendMail({
-      from: `"Job Portal" <${process.env.EMAIL_USER}>`,
-      to: app.email,
-      subject,
-      text,
-    });
+        await transporter.sendMail({
+          from: `"Job Portal" <${process.env.EMAIL_USER}>`,
+          to: app.email,
+          subject,
+          text,
+        });
+        
+        console.log("📧 Email notification sent");
+      } catch (emailErr) {
+        console.error("⚠️ Email sending failed:", emailErr.message);
+        // Don't fail the whole request if email fails
+      }
+    }
 
-    res.json({ message: `Application ${status.toLowerCase()} successfully and email sent.` });
+    res.json({
+      message: `Application ${status.toLowerCase()} successfully and email sent.`,
+    });
   } catch (err) {
     console.error("updateApplicationStatus Error:", err);
     res.status(500).json({ error: "Server error while updating status" });

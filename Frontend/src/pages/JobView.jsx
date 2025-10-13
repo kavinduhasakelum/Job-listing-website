@@ -6,6 +6,8 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import Button from "../components/Button";
+import JobApplicationModal from "../components/JobApplicationModal";
+import { useAuth } from "../contexts/AuthContext";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
@@ -129,6 +131,7 @@ function JobView() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const { user } = useAuth();
 
   const jobState = location.state?.job ?? location.state?.jobData ?? null;
   const initialJob = useMemo(
@@ -146,10 +149,56 @@ function JobView() {
 
   const resolvedJobId = (jobIdFromQuery ?? jobIdFromState)?.toString() ?? null;
 
+  // Debug: Log initial page load
+  console.log("🔵 JobView Component Loaded");
+  console.log("- Job ID from URL:", resolvedJobId);
+  console.log("- User:", user);
+  console.log("- User role:", user?.role);
+
   const [job, setJob] = useState(initialJob);
   const [loading, setLoading] = useState(Boolean(resolvedJobId) && !initialJob);
   const [error, setError] = useState(initialJob ? null : null);
   const [warning, setWarning] = useState(null);
+  
+  // Application modal state
+  const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
+  const [hasApplied, setHasApplied] = useState(false);
+  const [checkingApplication, setCheckingApplication] = useState(false);
+  const [applicationSuccess, setApplicationSuccess] = useState(false);
+
+  // Check if user has already applied for this job
+  useEffect(() => {
+    const checkApplication = async () => {
+      if (!resolvedJobId || !user || user.role !== "jobseeker") {
+        return;
+      }
+
+      try {
+        setCheckingApplication(true);
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const { data } = await axios.get(
+          `${API_BASE_URL}/job/my/applications`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        // Check if user has applied for this job
+        const hasAppliedToJob = data.applications?.some(
+          (app) => app.job_id?.toString() === resolvedJobId
+        );
+        setHasApplied(hasAppliedToJob);
+      } catch (err) {
+        console.error("Error checking application:", err);
+      } finally {
+        setCheckingApplication(false);
+      }
+    };
+
+    checkApplication();
+  }, [resolvedJobId, user]);
 
   useEffect(() => {
     if (initialJob) {
@@ -246,6 +295,91 @@ function JobView() {
       .map((paragraph) => paragraph.trim())
       .filter(Boolean);
   }, [job?.description]);
+
+  const handleApplyClick = async () => {
+    console.log("Apply button clicked", { user, userRole: user?.role });
+    
+    if (!user) {
+      // Redirect to login if not authenticated
+      console.log("No user, redirecting to login");
+      navigate("/register-login", {
+        state: { from: location.pathname + location.search },
+      });
+      return;
+    }
+
+    if (user.role !== "jobseeker") {
+      console.log("User is not a job seeker:", user.role);
+      setError("Only job seekers can apply for jobs");
+      return;
+    }
+
+    // Check if user has a profile
+    console.log("Checking if user has profile...");
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API_BASE_URL}/user/jobseeker/details`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      console.log("Profile exists:", response.data);
+      // Profile exists, open modal
+      setIsApplicationModalOpen(true);
+    } catch (err) {
+      console.log("Profile check error:", err.response?.status, err.response?.data);
+      
+      if (err.response?.status === 404) {
+        // Profile doesn't exist - show informative message and dialog
+        console.log("No profile found, showing dialog");
+        setWarning(
+          "⚠️ Profile Required: You need to complete your profile before applying for jobs. Your profile helps employers learn about you and is required for all applications."
+        );
+        
+        // Show confirmation dialog immediately
+        const confirmed = window.confirm(
+          "You haven't created your profile yet.\n\n" +
+          "Your profile includes:\n" +
+          "• Basic information (name, contact)\n" +
+          "• Profile picture (optional)\n" +
+          "• Address and birthday\n\n" +
+          "Creating a profile is quick and helps employers know more about you.\n\n" +
+          "Would you like to create your profile now?"
+        );
+        
+        console.log("User confirmed:", confirmed);
+        
+        if (confirmed) {
+          console.log("Navigating to profile form with state:", {
+            returnTo: location.pathname + location.search,
+            jobTitle: job?.title
+          });
+          navigate("/jobseeker/profile", {
+            state: { 
+              returnTo: location.pathname + location.search,
+              jobTitle: job?.title
+            }
+          });
+        }
+      } else {
+        console.error("Error checking profile:", err);
+        setError("Failed to verify profile. Please try again.");
+      }
+    }
+  };
+
+  const handleApplicationSuccess = () => {
+    setHasApplied(true);
+    setApplicationSuccess(true);
+    
+    // Hide success message after 5 seconds
+    setTimeout(() => {
+      setApplicationSuccess(false);
+    }, 5000);
+  };
+
+  const handleCloseModal = () => {
+    setIsApplicationModalOpen(false);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 pb-16 pt-10">
@@ -413,8 +547,43 @@ function JobView() {
                     </dd>
                   </div>
                 </dl>
-                <div className="pt-2">
-                  <Button Name={loading ? "Loading…" : "Apply now"} width="w-full" />
+                <div className="space-y-3 pt-2">
+                  {applicationSuccess && (
+                    <div className="rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700">
+                      ✓ Application submitted successfully!
+                    </div>
+                  )}
+                  {loading ? (
+                    <Button Name="Loading…" width="w-full" />
+                  ) : hasApplied ? (
+                    <button
+                      disabled
+                      className="w-full rounded-lg bg-slate-300 px-4 py-3 text-sm font-medium text-slate-600 cursor-not-allowed"
+                    >
+                      Already Applied
+                    </button>
+                  ) : checkingApplication ? (
+                    <button
+                      disabled
+                      className="w-full rounded-lg bg-slate-200 px-4 py-3 text-sm font-medium text-slate-600"
+                    >
+                      Checking...
+                    </button>
+                  ) : user?.role === "jobseeker" ? (
+                    <button
+                      onClick={handleApplyClick}
+                      className="w-full rounded-lg bg-gradient-to-r from-purple-600 to-orange-500 px-4 py-3 text-sm font-medium text-white transition-all hover:shadow-lg"
+                    >
+                      Apply now
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleApplyClick}
+                      className="w-full rounded-lg bg-gradient-to-r from-purple-600 to-orange-500 px-4 py-3 text-sm font-medium text-white transition-all hover:shadow-lg"
+                    >
+                      {user ? "Login as Job Seeker" : "Login to Apply"}
+                    </button>
+                  )}
                 </div>
               </aside>
             </div>
@@ -427,6 +596,16 @@ function JobView() {
           </div>
         </div>
       </div>
+
+      {/* Application Modal */}
+      {job && (
+        <JobApplicationModal
+          isOpen={isApplicationModalOpen}
+          onClose={handleCloseModal}
+          job={job}
+          onSuccess={handleApplicationSuccess}
+        />
+      )}
     </div>
   );
 }

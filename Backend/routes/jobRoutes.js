@@ -68,9 +68,11 @@ router.get("/company/:employerId", getJobsByCompany);
 
 // Apply for a job
 router.post("/apply", verifyToken, upload.single("resume"), applyJob);
+router.post("/:jobId/apply", verifyToken, upload.single("resume"), applyJob);
 
 // Get all jobs posted by the logged-in jobseeker
 router.get("/my-applications", verifyToken, getMyApplications);
+router.get("/my/applications", verifyToken, getMyApplications);
 
 // Get all jobs posted by the logged-in employer
 router.get("/applicants/:job_id", verifyToken, getApplicantsByJob);

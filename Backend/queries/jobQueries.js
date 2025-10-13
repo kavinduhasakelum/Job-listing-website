@@ -11,7 +11,7 @@ export const getJobsQuery = `
 `;
 
 export const getJobByIdQuery = `
-  SELECT * FROM jobs WHERE job_id = ? AND status = 'approved'
+  SELECT * FROM jobs WHERE job_id = ?
 `;
 
 export const incrementJobViewsQuery = `

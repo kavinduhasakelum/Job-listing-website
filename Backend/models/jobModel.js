@@ -65,3 +65,60 @@ export const incrementJobViews = async (jobId) => {
   return result;
 };
 
+export const findAllJobs = async () => {
+  const [rows] = await pool.query(`
+    SELECT j.*, u.userName as employer_name, u.email as employer_email
+    FROM jobs j
+    LEFT JOIN users u ON j.employer_id = u.user_id
+    ORDER BY j.created_at DESC
+  `);
+  return rows;
+};
+
+export const findPendingJobs = async () => {
+  const [rows] = await pool.query(`
+    SELECT j.*, u.userName as employer_name, u.email as employer_email
+    FROM jobs j
+    LEFT JOIN users u ON j.employer_id = u.user_id
+    WHERE j.status = 'pending'
+    ORDER BY j.created_at DESC
+  `);
+  return rows;
+};
+
+export const findRejectedJobs = async () => {
+  const [rows] = await pool.query(`
+    SELECT j.*, u.userName as employer_name, u.email as employer_email
+    FROM jobs j
+    LEFT JOIN users u ON j.employer_id = u.user_id
+    WHERE j.status = 'rejected'
+    ORDER BY j.created_at DESC
+  `);
+  return rows;
+};
+
+export const findJobsByStatus = async (status) => {
+  const [rows] = await pool.query(`
+    SELECT j.*, u.userName as employer_name, u.email as employer_email
+    FROM jobs j
+    LEFT JOIN users u ON j.employer_id = u.user_id
+    WHERE j.status = ?
+    ORDER BY j.created_at DESC
+  `, [status]);
+  return rows;
+};
+
+export const getJobStatistics = async () => {
+  const [stats] = await pool.query(`
+    SELECT
+      COUNT(*) as total_jobs,
+      SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved_jobs,
+      SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_jobs,
+      SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_jobs,
+      COALESCE(SUM(views), 0) as total_views,
+      COALESCE(SUM(applicants), 0) as total_applicants
+    FROM jobs
+  `);
+  return stats[0];
+};
+

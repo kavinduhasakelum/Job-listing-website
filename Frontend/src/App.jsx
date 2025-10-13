@@ -30,6 +30,9 @@ import EmployerProfileForm from "./pages/EmployerProfileForm";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import AllJobs from "./pages/AllJobs";
+import MyApplications from "./pages/MyApplications";
+import JobSeekerProfileForm from "./pages/JobSeekerProfileForm";
+import JobSeekerDashboard from "./pages/JobSeekerDashboard";
 
 const router = createBrowserRouter([
   {
@@ -45,9 +48,18 @@ const router = createBrowserRouter([
         ),
       },
       { path: "job", element: <JobView /> },
-
+      { path: "job-view", element: <JobView /> },
       { path: "all-jobs", element: <AllJobs /> },
+      {
+        path: "my-applications",
+        element: (
+          <ProtectedRoute>
+            <MyApplications />
+          </ProtectedRoute>
+        ),
+      },
       { path: "register", element: <RegisterLogin /> },
+      { path: "register-login", element: <RegisterLogin /> },
       { path: "forgot-password", element: <ForgotPassword /> },
       { path: "reset-password", element: <ResetPassword /> },
       {
@@ -76,6 +88,14 @@ const router = createBrowserRouter([
           </EmployerRoute>
         ),
       },
+      {
+        path: "jobseeker/profile",
+        element: (
+          <ProtectedRoute>
+            <JobSeekerProfileForm />
+          </ProtectedRoute>
+        ),
+      },
     ],
   },
   {
@@ -98,6 +118,14 @@ const router = createBrowserRouter([
   {
     path: "/employee",
     element: <Navigate to="/employer-dashboard" replace />,
+  },
+  {
+    path: "/jobseeker-dashboard",
+    element: (
+      <ProtectedRoute>
+        <JobSeekerDashboard />
+      </ProtectedRoute>
+    ),
   },
 ]);
 
