@@ -65,17 +65,9 @@ const JobApplicationModal = ({ isOpen, onClose, job, onSuccess }) => {
     // Get job ID with fallback options
     const jobId = job.id || job.job_id || job.jobId || job.raw?.job_id;
     
-    console.log("===========================================");
-    console.log("📤 Submitting Job Application");
-    console.log("===========================================");
-    console.log("Job ID extracted:", jobId);
-    console.log("Job object received:", job);
-    console.log("All ID options:");
-    console.log("  - job.id:", job.id);
-    console.log("  - job.job_id:", job.job_id);
-    console.log("  - job.jobId:", job.jobId);
-    console.log("  - job.raw?.job_id:", job.raw?.job_id);
-    console.log("===========================================");
+    console.log("Job Application Debug:");
+    console.log("- job object:", job);
+    console.log("- jobId extracted:", jobId);
     
     if (!jobId) {
       setError("Unable to determine job ID. Please try again.");
@@ -111,12 +103,7 @@ const JobApplicationModal = ({ isOpen, onClose, job, onSuccess }) => {
         return;
       }
 
-      console.log("📍 API Endpoint:", `${API_BASE_URL}/job/${jobId}/apply`);
-      console.log("📦 Form Data:");
-      console.log("  - job_id:", jobId);
-      console.log("  - cover_letter length:", coverLetter.trim().length);
-      console.log("  - resume:", resume?.name);
-      console.log("===========================================");
+      console.log("- Submitting to:", `${API_BASE_URL}/job/${jobId}/apply`);
 
       // Submit application
       const response = await axios.post(

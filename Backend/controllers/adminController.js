@@ -1,27 +1,22 @@
 import pool from "../config/dbConnection.js";
-import { sendEmail } from "../utils/emailClient.js";
 import {
   getAllUsers as getAllUsersModel,
   getActiveUsers as getActiveUsersModel,
   getInactiveUsers as getInactiveUsersModel,
-  getUserByIdAll as getUserByIdAllModel,
   getActiveUserById as getActiveUserByIdModel,
+  getUserByIdAll as getUserByIdAllModel,
   getInactiveUserById as getInactiveUserByIdModel,
-  softDeleteUserById,
   deleteUserById,
-  findUsersByRole,
-  findUserEmailById,
+  softDeleteUserById,
+  findUsersByRole
 } from "../models/userModel.js";
-import {
-  findAllJobs,
-  findPendingJobs,
-  findRejectedJobs,
-  findJobsByStatus,
-  getJobStatistics,
-  findJobById,
-  updateJobStatus,
-  deleteJobRecord,
-} from "../models/jobModel.js";
+
+import { findJobById } from "../models/jobModel.js";
+import { sendEmail } from "../utils/emailClient.js";
+
+/**  ===============================
+ *      --- USER MANAGEMENT ---
+ *   =============================== */
 
 // View all users
 export const getAllUsers = async (req, res) => {
@@ -146,7 +141,46 @@ export const getUsersByRole = async (req, res) => {
   }
 };
 
-// --- JOBS MANAGEMENT ---
+/**  ===============================
+ *      --- JOBS MANAGEMENT ---
+ *   =============================== */
+
+// Get all jobs (any status)
+export const getAllJobs = async (req, res) => {
+  try {
+    const [jobs] = await pool.query("SELECT * FROM jobs ORDER BY created_at DESC");
+    res.status(200).json(jobs);
+  } catch (err) {
+    console.error("Error fetching jobs:", err);
+    res.status(500).json({ error: "Error fetching jobs" });
+  }
+};
+
+// Get pending jobs
+export const getPendingJobs = async (req, res) => {
+  try {
+    const [jobs] = await pool.query(
+      "SELECT * FROM jobs WHERE status = 'pending' ORDER BY created_at DESC"
+    );
+    res.status(200).json(jobs);
+  } catch (err) {
+    console.error("Error fetching pending jobs:", err);
+    res.status(500).json({ error: "Error fetching pending jobs" });
+  }
+};
+
+// Get rejected jobs
+export const getRejectedJobs = async (req, res) => {
+  try {
+    const [jobs] = await pool.query(
+      "SELECT * FROM jobs WHERE status = 'rejected' ORDER BY created_at DESC"
+    );
+    res.status(200).json(jobs);
+  } catch (err) {
+    console.error("Error fetching rejected jobs:", err);
+    res.status(500).json({ error: "Error fetching rejected jobs" });
+  }
+};
 
 // Get all jobs (admin view)
 export const getAllJobs = async (req, res) => {
@@ -238,69 +272,52 @@ export const approveOrRejectJob = async (req, res) => {
         .json({ error: "Invalid status. Use 'approved' or 'rejected'." });
     }
 
-    // Fetch job details
-    const jobs = await findJobById(jobId);
-    
-    if (jobs.length === 0) {
+    // Fetch job and employer info
+    const [jobResult] = await pool.query(
+      `SELECT j.title, u.email
+       FROM jobs j
+       JOIN users u ON j.employer_id = u.user_id
+       WHERE j.job_id = ?`,
+      [jobId]
+    );
+
+    if (jobResult.length === 0) {
       return res.status(404).json({ error: "Job not found" });
     }
 
     const job = jobs[0];
 
     // Update job status and optional rejection reason
-    await updateJobStatus(status, jobId);
-    
-    if (status === "rejected" && reason) {
-      await pool.query(
-        "UPDATE jobs SET rejection_reason = ? WHERE job_id = ?",
-        [reason, jobId]
-      );
-    }
+    await pool.query(
+      "UPDATE jobs SET status = ?, rejection_reason = ? WHERE job_id = ?",
+      [status, status === "rejected" ? reason || "Not specified" : null, jobId]
+    );
 
-    // Get employer email
-    const employerEmails = await findUserEmailById(job.employer_id);
-    
-    if (employerEmails.length > 0) {
-      const email = employerEmails[0].email;
-      
-      // Send appropriate email
-      const mailOptions =
-        status === "approved"
-          ? {
-              to: email,
-              subject: `Job Approved ✅ - ${job.title}`,
-              html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h2 style="color: #7c3aed;">Job Posting Approved!</h2>
-                  <p>Hello,</p>
-                  <p>Great news! Your job posting <strong>${job.title}</strong> has been <strong>approved</strong> by our admin team and is now live on WorkNest.</p>
-                  <p>Job seekers can now view and apply to your position.</p>
-                  <p style="margin-top: 20px;">Best regards,<br/>WorkNest Team</p>
-                </div>
-              `,
-            }
-          : {
-              to: email,
-              subject: `Job Posting Needs Revision ❌ - ${job.title}`,
-              html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h2 style="color: #dc2626;">Job Posting Requires Revision</h2>
-                  <p>Hello,</p>
-                  <p>Unfortunately, your job posting <strong>${job.title}</strong> needs some revisions before it can be published.</p>
-                  <p><strong>Reason:</strong> ${reason || "Not specified"}</p>
-                  <p>Please review the feedback, make the necessary changes, and resubmit your job posting.</p>
-                  <p style="margin-top: 20px;">Best regards,<br/>WorkNest Team</p>
-                </div>
-              `,
-            };
+    // Send appropriate email using the imported sendEmail function
+    const mailOptions =
+      status === "approved"
+        ? {
+            // No need for 'from' here as sendEmail handles SMTP_FROM/SMTP_USER
+            to: email,
+            subject: `Job Approved ✅ - ${title}`,
+            html: `
+              <p>Hello,</p>
+              <p>Your job posting <b>${title}</b> has been <b>approved</b> by the admin and is now visible to job seekers.</p>
+            `,
+          }
+        : {
+            // No need for 'from' here as sendEmail handles SMTP_FROM/SMTP_USER
+            to: email,
+            subject: `Job Rejected ❌ - ${title}`,
+            html: `
+              <p>Hello,</p>
+              <p>Unfortunately, your job posting <b>${title}</b> has been <b>rejected</b> by the admin.</p>
+              <p><b>Reason:</b> ${reason || "Not specified"}</p>
+            `,
+          };
 
-      try {
-        await sendEmail(mailOptions);
-      } catch (emailError) {
-        console.error("Email sending failed:", emailError);
-        // Continue even if email fails
-      }
-    }
+    // Use sendEmail function
+    await sendEmail(mailOptions);
 
     // Send response
     res.json({
@@ -318,22 +335,30 @@ export const approveOrRejectJob = async (req, res) => {
 
 // Delete job
 export const deleteJobByAdmin = async (req, res) => {
+  const { jobId } = req.params; // Destructure and rename id to jobId for clarity
+  // Ensure only admins can access this route
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({ error: "Access denied. Only administrators can delete jobs." });
+  }
+
   try {
-    const employerId = req.user.id;
-    const { id } = req.params;
-
-    const result = await deleteJobRecord(id, employerId);
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Job not found or not authorized" });
+    // 1. Check if the job exists using the existing findJobById from jobModel.js
+    const existingJob = await findJobById(jobId);
+    if (existingJob.length === 0) {
+      return res.status(404).json({ error: "Job not found." });
     }
 
-    const jobRows = await findJobsByEmployerId(employerId);
-    const jobs = jobRows.map((job) => normaliseJobForDashboard(job)).filter(Boolean);
-    const stats = computeJobStats(jobs);
+    // 2. Perform the deletion directly using pool.query for admin
+    const [result] = await pool.query("DELETE FROM jobs WHERE job_id = ?", [jobId]);
 
-    res.json({ message: "Job deleted successfully", jobs, stats });
+    if (result.affectedRows === 0) {
+      // This case might mean it was found but for some reason not deleted (e.g., race condition)
+      return res.status(500).json({ error: "Failed to delete job. It might no longer exist." });
+    }
+
+    res.json({ message: "Job permanently deleted by admin successfully." });
   } catch (err) {
-    res.status(500).json({ error: "Server error while deleting job" });
+    console.error("Admin delete job error:", err);
+    res.status(500).json({ error: "Server error while deleting job." });
   }
 };
