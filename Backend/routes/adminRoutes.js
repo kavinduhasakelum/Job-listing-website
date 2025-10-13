@@ -13,7 +13,8 @@ import {
   approveOrRejectJob,
   deleteJobByAdmin,
   getPendingJobs,
-  getRejectedJobs
+  getRejectedJobs,
+  getDashboardStats
 } from "../controllers/adminController.js";
 import { verifyToken, isAdmin } from "../middlewares/authMiddleware.js";
 

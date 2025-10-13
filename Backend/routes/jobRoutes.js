@@ -16,6 +16,7 @@ import {
   getSavedJobs,
   removeSavedJob,
 } from "../controllers/jobController.js";
+import { approveOrRejectJob } from "../controllers/adminController.js";
 import {
   verifyToken,
   isAdmin,
@@ -92,8 +93,7 @@ router.post("/apply", verifyToken, upload.single("resume"), applyJob);
 // Get all jobs posted by the logged-in jobseeker
 router.get("/my-applications", verifyToken, getMyApplications);
 
-// Get all jobs posted by the logged-in employer
-router.get("/applicants/:job_id", verifyToken, getApplicantsByJob);
+// Note: applicants route is defined above as /:jobId/applicants
 
 // Update application status (Approve/Reject) - Employer only
 router.patch("/application/:application_id/status", verifyToken, updateApplicationStatus);

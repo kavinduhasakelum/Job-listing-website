@@ -145,43 +145,6 @@ export const getUsersByRole = async (req, res) => {
  *      --- JOBS MANAGEMENT ---
  *   =============================== */
 
-// Get all jobs (any status)
-export const getAllJobs = async (req, res) => {
-  try {
-    const [jobs] = await pool.query("SELECT * FROM jobs ORDER BY created_at DESC");
-    res.status(200).json(jobs);
-  } catch (err) {
-    console.error("Error fetching jobs:", err);
-    res.status(500).json({ error: "Error fetching jobs" });
-  }
-};
-
-// Get pending jobs
-export const getPendingJobs = async (req, res) => {
-  try {
-    const [jobs] = await pool.query(
-      "SELECT * FROM jobs WHERE status = 'pending' ORDER BY created_at DESC"
-    );
-    res.status(200).json(jobs);
-  } catch (err) {
-    console.error("Error fetching pending jobs:", err);
-    res.status(500).json({ error: "Error fetching pending jobs" });
-  }
-};
-
-// Get rejected jobs
-export const getRejectedJobs = async (req, res) => {
-  try {
-    const [jobs] = await pool.query(
-      "SELECT * FROM jobs WHERE status = 'rejected' ORDER BY created_at DESC"
-    );
-    res.status(200).json(jobs);
-  } catch (err) {
-    console.error("Error fetching rejected jobs:", err);
-    res.status(500).json({ error: "Error fetching rejected jobs" });
-  }
-};
-
 // Get all jobs (admin view)
 export const getAllJobs = async (req, res) => {
   try {

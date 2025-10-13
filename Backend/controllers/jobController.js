@@ -639,7 +639,7 @@ export const applyJob = async (req, res) => {
     const seekerId = seekerRows[0].seeker_id;
 
     // Check if job exists and is approved
-    const [job] = await pool.query(
+    const [allJobs] = await pool.query(
       findApprovedJobByIdQuery,
       [job_id]
     );
@@ -666,7 +666,7 @@ export const applyJob = async (req, res) => {
     }
 
     // Get full job details for approved job
-    const [job] = await pool.query("SELECT * FROM jobs WHERE job_id = ?", [
+    const [jobDetails] = await pool.query("SELECT * FROM jobs WHERE job_id = ?", [
       job_id,
     ]);
 
@@ -768,12 +768,12 @@ export const getApplicantsByJob = async (req, res) => {
     );
 
     // Verify job ownership (employer_id in jobs references user_id in users)
-    const [job] = await pool.query(
+    const [jobOwnership] = await pool.query(
       verifyJobOwnershipQuery,
       [job_id, employerId]
     );
 
-    if (job.length === 0) {
+    if (jobOwnership.length === 0) {
       // Check if job exists at all
       const [jobExists] = await pool.query(
         "SELECT job_id, employer_id FROM jobs WHERE job_id = ?",
