@@ -38,6 +38,9 @@ export const getAllUsers = async () => {
   return rows;
 };
 
+// Alias for admin controller
+export const getAllUsersModel = getAllUsers;
+
 export const getActiveUsers = async () => {
   const [rows] = await pool.query(GET_ACTIVE_USERS);
   return rows;

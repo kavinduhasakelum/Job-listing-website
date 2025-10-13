@@ -146,7 +146,7 @@ export const updateEmployerDetails = async (req, res) => {
     values.push(userId); // WHERE condition
 
     await pool.query(
-      `UPDATE employer SET ${fields.map((f) => f + " = ?").join(", ")} WHERE user_id = ?`,
+      `UPDATE employers SET ${fields.map((f) => f + " = ?").join(", ")} WHERE user_id = ?`,
       values
     );
 

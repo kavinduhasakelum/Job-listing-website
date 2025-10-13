@@ -22,6 +22,9 @@ const router = express.Router();
 // All routes here require admin access
 router.use(verifyToken, isAdmin);
 
+// --- DASHBOARD STATISTICS ---
+router.get("/statistics", getDashboardStats);
+
 // --- USER MANAGEMENT ---
 router.get("/users", getAllUsers);
 router.get("/users/active", getActiveUsers);

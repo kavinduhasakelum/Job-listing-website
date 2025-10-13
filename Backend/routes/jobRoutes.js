@@ -1,3 +1,4 @@
+
 import express from "express";
 import {
   createJob,
@@ -7,38 +8,62 @@ import {
   updateJob,
   deleteJob,
   getJobsByCompany,
+  getApplicantsByJob,
+  updateApplicationStatus,
+  applyJob,
+  getMyApplications,
   saveJob,
   getSavedJobs,
   removeSavedJob,
-  getEmployerJobs,
-  applyJob,
-  getMyApplications,
-  getApplicantsByJob,
-  updateApplicationStatus
 } from "../controllers/jobController.js";
-
 import {
   verifyToken,
   isAdmin,
-  isEmployer
+  isEmployer,
 } from "../middlewares/authMiddleware.js";
 import upload from "../utils/multer.js";
 
 const router = express.Router();
 
-// Create Job
 router.post(
   "/create",
+  (req, res, next) => {
+    console.log("🎯 POST /job/create route hit");
+    console.log("  - Has file:", !!req.file);
+    console.log("  - Body keys:", Object.keys(req.body));
+    next();
+  },
   verifyToken,
   isEmployer,
   upload.single("company_logo"),
   createJob
 );
 
-// Get Jobs by Employer
+// Specific routes FIRST
+router.get("/", getAllJobs);
 router.get("/my-jobs", verifyToken, isEmployer, getJobsByEmployer);
+router.get("/my/applications", verifyToken, getMyApplications);
+router.get("/saved", verifyToken, getSavedJobs);
+router.get("/company/:employerId", getJobsByCompany);
 
-// Update Job
+// Admin approval
+router.put("/approve/:jobId", verifyToken, isAdmin, approveOrRejectJob);
+
+// Save/Unsave job routes - BEFORE /:id routes
+router.post("/:jobId/save", verifyToken, saveJob);
+router.delete("/:jobId/save", verifyToken, removeSavedJob);
+
+// Applicant management - MUST be before generic /:id routes
+router.get("/:jobId/applicants", (req, res, next) => {
+  console.log("🎯 Applicants route matched! JobId:", req.params.jobId);
+  next();
+}, verifyToken, isEmployer, getApplicantsByJob);
+router.put("/:jobId/applicants/:applicationId/status", verifyToken, isEmployer, updateApplicationStatus);
+
+// Job application - BEFORE /:id route
+router.post("/:jobId/apply", verifyToken, upload.single("resume"), applyJob);
+
+// Job CRUD - with parametric routes
 router.put(
   "/:id",
   verifyToken,
@@ -47,7 +72,6 @@ router.put(
   updateJob
 );
 
-// Delete Job
 router.delete("/:id", verifyToken, isEmployer, deleteJob);
 
 // Save a job
@@ -76,5 +100,14 @@ router.patch("/application/:application_id/status", verifyToken, updateApplicati
 
 router.get("/", getAllJobs);
 router.get("/:id", getJobById);
+
+// Log all registered routes
+console.log("📋 Job Routes registered:");
+router.stack.forEach((r) => {
+  if (r.route) {
+    const methods = Object.keys(r.route.methods).join(', ').toUpperCase();
+    console.log(`   ${methods} /job${r.route.path}`);
+  }
+});
 
 export default router;

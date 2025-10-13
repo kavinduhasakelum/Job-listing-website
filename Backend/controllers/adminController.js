@@ -182,6 +182,83 @@ export const getRejectedJobs = async (req, res) => {
   }
 };
 
+// Get all jobs (admin view)
+export const getAllJobs = async (req, res) => {
+  try {
+    const jobs = await findAllJobs();
+    res.json(jobs);
+  } catch (err) {
+    console.error("Get all jobs error:", err);
+    res.status(500).json({ error: "Server error while fetching jobs" });
+  }
+};
+
+// Get pending jobs
+export const getPendingJobs = async (req, res) => {
+  try {
+    const jobs = await findPendingJobs();
+    res.json(jobs);
+  } catch (err) {
+    console.error("Get pending jobs error:", err);
+    res.status(500).json({ error: "Server error while fetching pending jobs" });
+  }
+};
+
+// Get rejected jobs
+export const getRejectedJobs = async (req, res) => {
+  try {
+    const jobs = await findRejectedJobs();
+    res.json(jobs);
+  } catch (err) {
+    console.error("Get rejected jobs error:", err);
+    res.status(500).json({ error: "Server error while fetching rejected jobs" });
+  }
+};
+
+// Get jobs by status
+export const getJobsByStatus = async (req, res) => {
+  try {
+    const { status } = req.params;
+    const validStatuses = ['pending', 'approved', 'rejected', 'closed'];
+    
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+
+    const jobs = await findJobsByStatus(status);
+    res.json(jobs);
+  } catch (err) {
+    console.error("Get jobs by status error:", err);
+    res.status(500).json({ error: "Server error while fetching jobs" });
+  }
+};
+
+// Get admin dashboard statistics
+export const getDashboardStats = async (req, res) => {
+  try {
+    const jobStats = await getJobStatistics();
+    
+    // Get user statistics
+    const [userStats] = await pool.query(`
+      SELECT
+        COUNT(*) as total_users,
+        SUM(CASE WHEN role = 'employer' THEN 1 ELSE 0 END) as total_employers,
+        SUM(CASE WHEN role = 'jobseeker' THEN 1 ELSE 0 END) as total_jobseekers,
+        SUM(CASE WHEN is_verified = 1 THEN 1 ELSE 0 END) as verified_users,
+        SUM(CASE WHEN is_deleted = 0 THEN 1 ELSE 0 END) as active_users
+      FROM users
+    `);
+
+    res.json({
+      jobs: jobStats,
+      users: userStats[0],
+    });
+  } catch (err) {
+    console.error("Get dashboard stats error:", err);
+    res.status(500).json({ error: "Server error while fetching statistics" });
+  }
+};
+
 // Approve or reject job
 export const approveOrRejectJob = async (req, res) => {
   try {
@@ -208,7 +285,7 @@ export const approveOrRejectJob = async (req, res) => {
       return res.status(404).json({ error: "Job not found" });
     }
 
-    const { title, email } = jobResult[0];
+    const job = jobs[0];
 
     // Update job status and optional rejection reason
     await pool.query(
@@ -246,8 +323,9 @@ export const approveOrRejectJob = async (req, res) => {
     res.json({
       message:
         status === "approved"
-          ? "Job approved successfully ✅ Email sent to employer."
-          : "Job rejected ❌ Email sent with reason to employer.",
+          ? "Job approved successfully ✅"
+          : "Job rejected ❌",
+      job: jobs[0],
     });
   } catch (err) {
     console.error("Approve/Reject job error:", err);

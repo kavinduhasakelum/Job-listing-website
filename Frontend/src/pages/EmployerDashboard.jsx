@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import ApplicantManagement from "../components/ApplicantManagement";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
@@ -90,12 +91,16 @@ const normaliseJobFromApi = (job = {}) => {
   const createdAt =
     job.created_at ?? job.createdAt ?? job.posted_at ?? job.date_created;
 
+  // Use actual job_id if available, otherwise create slug-based id
+  const displayId = rawId ?? `${(job.title || "job").toString().toLowerCase().replace(/\s+/g, "-")}-${
+    job.created_at || job.createdAt || Date.now()
+  }`;
+
+  console.log("📋 Normalizing job:", job.title, "| job_id:", rawId, "| id:", displayId);
+
   return {
-    id:
-      rawId ??
-      `${(job.title || "job").toString().toLowerCase().replace(/\s+/g, "-")}-${
-        job.created_at || job.createdAt || Date.now()
-      }`,
+    id: displayId,
+    jobId: rawId, // Actual numeric job_id for backend API calls
     title: job.title ?? "Untitled role",
     location: job.location ?? job.city ?? "Location unspecified",
     status: statusRaw,
@@ -188,7 +193,7 @@ function ConfirmDialog({ open, onClose, onConfirm, jobTitle }) {
   );
 }
 
-function JobRow({ job, onEdit, onDelete, onPreview, onCopy }) {
+function JobRow({ job, onEdit, onDelete, onPreview, onCopy, onViewApplicants }) {
   const statusColor =
     {
       approved: "bg-emerald-50 text-emerald-600",
@@ -270,6 +275,14 @@ function JobRow({ job, onEdit, onDelete, onPreview, onCopy }) {
 
         <div className="flex flex-wrap gap-2">
           <button
+            onClick={() => onViewApplicants(job)}
+            className="flex-1 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 px-4 py-2 text-sm font-semibold text-white transition-all hover:from-purple-700 hover:to-orange-600"
+          >
+            View Applicants ({job.applicants ?? 0})
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2 mt-2">
+          <button
             onClick={() => onPreview(job)}
             className="flex-1 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
           >
@@ -313,6 +326,10 @@ function EmployerDashboard() {
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState(null);
+  
+  // Tab navigation state
+  const [activeTab, setActiveTab] = useState("jobs");
+  const [selectedJobForApplicants, setSelectedJobForApplicants] = useState(null);
 
   const canManageJobs = useMemo(() => {
     if (!isAuthenticated) return false;
@@ -432,6 +449,15 @@ function EmployerDashboard() {
       setProcessingDelete(false);
     }
   }, [deleteTarget]);
+
+  const handleViewApplicants = useCallback((job) => {
+    console.log("👀 View Applicants clicked for job:", job);
+    console.log("  - job.id:", job.id);
+    console.log("  - job.jobId:", job.jobId);
+    console.log("  - job.job_id:", job.job_id);
+    setSelectedJobForApplicants(job);
+    setActiveTab("applicants");
+  }, []);
 
   const filteredJobs = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -649,12 +675,49 @@ function EmployerDashboard() {
           </section>
         )}
 
-        <section className="flex flex-col gap-6">
-          <div className="flex flex-col gap-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Job posts overview
-              </h2>
+        {/* Tab Navigation */}
+        <div className="flex gap-2 border-b border-slate-200">
+          <button
+            onClick={() => setActiveTab("jobs")}
+            className={`px-6 py-3 text-sm font-semibold transition-colors relative ${
+              activeTab === "jobs"
+                ? "text-purple-600"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            My Jobs
+            {activeTab === "jobs" && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-600 to-orange-500"></span>
+            )}
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("applicants");
+              if (!selectedJobForApplicants && jobs.length > 0) {
+                setSelectedJobForApplicants(jobs[0]);
+              }
+            }}
+            className={`px-6 py-3 text-sm font-semibold transition-colors relative ${
+              activeTab === "applicants"
+                ? "text-purple-600"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Applicants
+            {activeTab === "applicants" && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-600 to-orange-500"></span>
+            )}
+          </button>
+        </div>
+
+        {/* Jobs Tab Content */}
+        {activeTab === "jobs" && (
+          <section className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Job posts overview
+                </h2>
               <div className="flex flex-col gap-3 md:flex-row md:items-center">
                 <div className="relative">
                   <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
@@ -723,6 +786,7 @@ function EmployerDashboard() {
                     onDelete={requestDeleteJob}
                     onPreview={handlePreviewJob}
                     onCopy={handleCopyLink}
+                    onViewApplicants={handleViewApplicants}
                   />
                 ))}
               </div>
@@ -796,6 +860,81 @@ function EmployerDashboard() {
             </div>
           </div>
         </section>
+        )}
+
+        {/* Applicants Tab Content */}
+        {activeTab === "applicants" && (
+          <section className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+            {selectedJobForApplicants ? (
+              <div>
+                <div className="mb-6 flex items-center justify-between">
+                  <button
+                    onClick={() => setActiveTab("jobs")}
+                    className="inline-flex items-center gap-2 text-sm font-medium text-purple-600 hover:text-purple-700"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="currentColor"
+                      className="h-4 w-4"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
+                      />
+                    </svg>
+                    Back to Jobs
+                  </button>
+                  <select
+                    value={selectedJobForApplicants.id}
+                    onChange={(e) => {
+                      const job = jobs.find((j) => j.id === e.target.value);
+                      if (job) setSelectedJobForApplicants(job);
+                    }}
+                    className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    {jobs.map((job) => (
+                      <option key={job.id} value={job.id}>
+                        {job.title} ({job.applicants || 0} applicants)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {(() => {
+                  const jobId = selectedJobForApplicants.jobId || selectedJobForApplicants.id;
+                  console.log("🔍 Passing to ApplicantManagement:");
+                  console.log("  - jobId:", jobId);
+                  console.log("  - selectedJobForApplicants:", selectedJobForApplicants);
+                  return (
+                    <ApplicantManagement
+                      jobId={jobId}
+                      jobTitle={selectedJobForApplicants.title}
+                    />
+                  );
+                })()}
+              </div>
+            ) : (
+              <div className="py-12 text-center">
+                <div className="mb-4 text-4xl">📋</div>
+                <h3 className="text-lg font-semibold text-slate-900">
+                  No job selected
+                </h3>
+                <p className="mt-2 text-sm text-slate-500">
+                  Create a job post first to view applicants.
+                </p>
+                <button
+                  onClick={() => setActiveTab("jobs")}
+                  className="mt-4 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:from-purple-700 hover:to-orange-600"
+                >
+                  Go to Jobs
+                </button>
+              </div>
+            )}
+          </section>
+        )}
       </div>
 
       <ConfirmDialog
