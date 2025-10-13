@@ -13,6 +13,22 @@ import {
   findApprovedJobsByCompany,
   incrementJobViews,
 } from "../models/jobModel.js";
+import { 
+  checkExistingSavedJobQuery,
+  insertSavedJobQuery,
+  getSavedJobsByJobseekerQuery,
+  removeSavedJobQuery,
+  findSeekerByUserIdQuery,
+  findApprovedJobByIdQuery,
+  checkExistingApplicationQuery,
+  insertJobApplicationQuery,
+  getSeekerIdByUserIdQuery,
+  getApplicationsBySeekerIdQuery,
+  verifyJobOwnershipQuery,
+  getApplicantsByJobIdQuery,
+  getApplicationDetailsQuery,
+  updateApplicationStatusQuery
+ } from "../queries/jobQueries.js";
 import { findEmployerProfileByUserId } from "../models/employerModel.js";
 import { findUserEmailById } from "../models/userModel.js";
 import nodemailer from "nodemailer";
@@ -410,7 +426,7 @@ export const saveJob = async (req, res) => {
     }
 
     const [existing] = await pool.query(
-      "SELECT 1 FROM saved_jobs WHERE jobseeker_id = ? AND job_id = ?",
+      checkExistingSavedJobQuery,
       [jobseekerId, jobId]
     );
     if (existing.length > 0) {
@@ -418,7 +434,7 @@ export const saveJob = async (req, res) => {
     }
 
     await pool.query(
-      "INSERT INTO saved_jobs (jobseeker_id, job_id) VALUES (?, ?)",
+      insertSavedJobQuery,
       [jobseekerId, jobId]
     );
 
@@ -429,16 +445,13 @@ export const saveJob = async (req, res) => {
   }
 };
 
+// Get saved jobs for a jobseeker
 export const getSavedJobs = async (req, res) => {
   try {
     const jobseekerId = req.user.id;
 
     const [rows] = await pool.query(
-      `SELECT j.*
-       FROM saved_jobs s
-       JOIN jobs j ON s.job_id = j.job_id
-       WHERE s.jobseeker_id = ?
-       ORDER BY s.created_at DESC`,
+      getSavedJobsByJobseekerQuery,
       [jobseekerId]
     );
 
@@ -453,13 +466,14 @@ export const getSavedJobs = async (req, res) => {
   }
 };
 
+// Remove a saved job
 export const removeSavedJob = async (req, res) => {
   try {
     const jobseekerId = req.user.id;
     const { jobId } = req.params;
 
     const [result] = await pool.query(
-      "DELETE FROM saved_jobs WHERE jobseeker_id = ? AND job_id = ?",
+      removeSavedJobQuery,
       [jobseekerId, jobId]
     );
 
@@ -494,6 +508,7 @@ export const getJobsByCompany = async (req, res) => {
       .json({ error: "Server error while fetching company jobs." });
   }
 };
+
 // Apply for a job (Jobseeker)
 export const applyJob = async (req, res) => {
   try {
@@ -502,7 +517,7 @@ export const applyJob = async (req, res) => {
 
     // Check if jobseeker profile exists
     const [seekerRows] = await pool.query(
-      "SELECT seeker_id FROM job_seeker WHERE user_id = ?",
+      findSeekerByUserIdQuery,
       [userId]
     );
     if (seekerRows.length === 0) {
@@ -516,7 +531,7 @@ export const applyJob = async (req, res) => {
 
     // Check if job exists and is approved
     const [job] = await pool.query(
-      "SELECT * FROM jobs WHERE job_id = ? AND status = 'approved'",
+      findApprovedJobByIdQuery,
       [job_id]
     );
     if (job.length === 0) {
@@ -525,7 +540,7 @@ export const applyJob = async (req, res) => {
 
     // Prevent duplicate applications
     const [existing] = await pool.query(
-      "SELECT * FROM job_applications WHERE job_id = ? AND seeker_id = ?",
+      checkExistingApplicationQuery,
       [job_id, seekerId]
     );
     if (existing.length > 0) {
@@ -546,7 +561,7 @@ export const applyJob = async (req, res) => {
 
     // Insert application into DB
     await pool.query(
-      "INSERT INTO job_applications (job_id, seeker_id, cover_letter, resume_url) VALUES (?, ?, ?, ?)",
+      insertJobApplicationQuery,
       [job_id, seekerId, cover_letter, resumePath]
     );
 
@@ -583,7 +598,7 @@ export const getMyApplications = async (req, res) => {
 
     // Get seeker_id
     const [seekerRows] = await pool.query(
-      "SELECT seeker_id FROM job_seeker WHERE user_id = ?",
+      getSeekerIdByUserIdQuery,
       [userId]
     );
     if (seekerRows.length === 0)
@@ -593,17 +608,7 @@ export const getMyApplications = async (req, res) => {
 
     // Fetch applications
     const [applications] = await pool.query(
-      `SELECT 
-          a.application_id,
-          a.status,
-          a.applied_at,
-          j.title,
-          j.location,
-          j.company_logo
-       FROM job_applications a
-       JOIN jobs j ON a.job_id = j.job_id
-       WHERE a.seeker_id = ?
-       ORDER BY a.applied_at DESC`,
+      getApplicationsBySeekerIdQuery,
       [jobseekerId]
     );
 
@@ -622,7 +627,7 @@ export const getApplicantsByJob = async (req, res) => {
 
     // Verify job ownership
     const [job] = await pool.query(
-      "SELECT * FROM jobs WHERE job_id = ? AND employer_id = ?",
+      verifyJobOwnershipQuery,
       [job_id, employerId]
     );
     if (job.length === 0) {
@@ -631,14 +636,7 @@ export const getApplicantsByJob = async (req, res) => {
 
     // Fetch applicants
     const [applicants] = await pool.query(
-      `SELECT a.application_id, a.status, a.applied_at,
-              js.full_name AS jobseeker_name,
-              u.email AS jobseeker_email,
-              a.cover_letter, a.resume_url
-         FROM job_applications a
-         JOIN job_seeker js ON a.seeker_id = js.seeker_id
-         JOIN users u ON js.user_id = u.user_id
-        WHERE a.job_id = ?`,
+      getApplicantsByJobIdQuery,
       [job_id]
     );
 
@@ -675,18 +673,7 @@ export const updateApplicationStatus = async (req, res) => {
 
     // Fetch application + job + jobseeker info
     const [rows] = await pool.query(
-      `SELECT 
-          a.application_id,
-          a.job_id,
-          j.title AS job_title,
-          j.employer_id,
-          u.email,
-          u.userName AS jobseeker_name
-       FROM job_applications a
-       JOIN jobs j ON a.job_id = j.job_id
-       JOIN job_seeker js ON a.seeker_id = js.seeker_id
-       JOIN users u ON js.user_id = u.user_id
-       WHERE a.application_id = ?`,
+      getApplicationDetailsQuery,
       [application_id]
     );
 
@@ -701,7 +688,7 @@ export const updateApplicationStatus = async (req, res) => {
 
     // Update status
     await pool.query(
-      "UPDATE job_applications SET status = ? WHERE application_id = ?",
+      updateApplicationStatusQuery,
       [status, application_id]
     );
 
