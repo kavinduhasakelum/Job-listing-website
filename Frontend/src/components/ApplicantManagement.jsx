@@ -5,11 +5,12 @@ import { FaUser, FaEnvelope, FaPhone, FaFileDownload, FaFilter, FaSearch, FaChec
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 const STATUS_OPTIONS = [
-  { value: "pending", label: "Pending", color: "yellow", icon: FaClock },
-  { value: "reviewed", label: "Reviewed", color: "blue", icon: FaCheckCircle },
-  { value: "shortlisted", label: "Shortlisted", color: "green", icon: FaCheckCircle },
-  { value: "rejected", label: "Rejected", color: "red", icon: FaTimesCircle },
-  { value: "interviewed", label: "Interviewed", color: "purple", icon: FaCheckCircle },
+  { value: "Pending", label: "Pending", color: "yellow", icon: FaClock },
+  { value: "Reviewed", label: "Reviewed", color: "blue", icon: FaCheckCircle },
+  { value: "Shortlisted", label: "Shortlisted", color: "green", icon: FaCheckCircle },
+  { value: "Approved", label: "Approved", color: "green", icon: FaCheckCircle },
+  { value: "Rejected", label: "Rejected", color: "red", icon: FaTimesCircle },
+  { value: "Interviewed", label: "Interviewed", color: "purple", icon: FaCheckCircle },
 ];
 
 const formatDate = (dateString) => {
@@ -134,7 +135,7 @@ export default function ApplicantManagement({ jobId, jobTitle }) {
     setError(null);
     try {
       const token = localStorage.getItem("token");
-      const url = `${API_BASE_URL}/job/applicants/${jobId}`;
+      const url = `${API_BASE_URL}/job/${jobId}/applicants`;
       console.log("🔍 Fetching applicants:");
       console.log("  - API_BASE_URL:", API_BASE_URL);
       console.log("  - Job ID:", jobId);

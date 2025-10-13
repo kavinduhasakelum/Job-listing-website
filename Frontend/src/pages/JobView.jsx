@@ -5,6 +5,7 @@ import {
   useNavigate,
   useSearchParams,
 } from "react-router-dom";
+import { FaBookmark, FaRegBookmark } from "react-icons/fa";
 import Button from "../components/Button";
 import JobApplicationModal from "../components/JobApplicationModal";
 import { useAuth } from "../contexts/AuthContext";
@@ -159,16 +160,21 @@ function JobView() {
   const [loading, setLoading] = useState(Boolean(resolvedJobId) && !initialJob);
   const [error, setError] = useState(initialJob ? null : null);
   const [warning, setWarning] = useState(null);
+  const fetchedJobIdRef = React.useRef(null); // Track which job we've fetched
   
   // Application modal state
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
   const [checkingApplication, setCheckingApplication] = useState(false);
   const [applicationSuccess, setApplicationSuccess] = useState(false);
+  
+  // Save job state
+  const [isSaved, setIsSaved] = useState(false);
+  const [savingJob, setSavingJob] = useState(false);
 
-  // Check if user has already applied for this job
+  // Check if user has already applied for this job and if job is saved
   useEffect(() => {
-    const checkApplication = async () => {
+    const checkApplicationAndSaved = async () => {
       if (!resolvedJobId || !user || user.role !== "jobseeker") {
         return;
       }
@@ -178,6 +184,7 @@ function JobView() {
         const token = localStorage.getItem("token");
         if (!token) return;
 
+        // Check applications
         const { data } = await axios.get(
           `${API_BASE_URL}/job/my/applications`,
           {
@@ -190,15 +197,59 @@ function JobView() {
           (app) => app.job_id?.toString() === resolvedJobId
         );
         setHasApplied(hasAppliedToJob);
+
+        // Check if job is saved
+        const savedJobsResponse = await axios.get(
+          `${API_BASE_URL}/job/saved`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        
+        const isJobSaved = savedJobsResponse.data.jobs?.some(
+          (savedJob) => savedJob.id?.toString() === resolvedJobId
+        );
+        setIsSaved(isJobSaved);
       } catch (err) {
-        console.error("Error checking application:", err);
+        console.error("Error checking application/saved status:", err);
       } finally {
         setCheckingApplication(false);
       }
     };
 
-    checkApplication();
+    checkApplicationAndSaved();
   }, [resolvedJobId, user]);
+
+  // Handle save/unsave job
+  const handleToggleSave = async () => {
+    if (!user || user.role !== "jobseeker" || !resolvedJobId) return;
+
+    try {
+      setSavingJob(true);
+      const token = localStorage.getItem("token");
+      
+      if (isSaved) {
+        // Unsave the job
+        await axios.delete(`${API_BASE_URL}/job/${resolvedJobId}/save`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setIsSaved(false);
+        console.log("✅ Job unsaved");
+      } else {
+        // Save the job
+        await axios.post(`${API_BASE_URL}/job/${resolvedJobId}/save`, {}, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setIsSaved(true);
+        console.log("✅ Job saved");
+      }
+    } catch (err) {
+      console.error("❌ Error toggling save:", err);
+      alert(err.response?.data?.error || "Failed to save/unsave job");
+    } finally {
+      setSavingJob(false);
+    }
+  };
 
   useEffect(() => {
     if (initialJob) {
@@ -229,9 +280,9 @@ function JobView() {
       return;
     }
 
-    if (job && job.id?.toString() === resolvedJobId) {
-      setWarning(null);
-      return;
+    // Check if we've already fetched this job ID
+    if (fetchedJobIdRef.current === resolvedJobId) {
+      return; // Already fetched, don't fetch again
     }
 
     let isMounted = true;
@@ -242,12 +293,15 @@ function JobView() {
         setLoading(true);
         setError(null);
         setWarning(null);
+        console.log("🌐 Fetching job from API:", `${API_BASE_URL}/job/${resolvedJobId}`);
         const { data } = await axios.get(
           `${API_BASE_URL}/job/${resolvedJobId}`,
           { signal: controller.signal }
         );
 
+        console.log("✅ Job fetched successfully:", data);
         if (!isMounted) return;
+        fetchedJobIdRef.current = resolvedJobId; // Mark as fetched
         setJob(normaliseJob(data));
         setWarning(null);
       } catch (fetchError) {
@@ -553,6 +607,32 @@ function JobView() {
                       ✓ Application submitted successfully!
                     </div>
                   )}
+                  
+                  {/* Save Job Button - Only for Job Seekers */}
+                  {user?.role === "jobseeker" && !loading && (
+                    <button
+                      onClick={handleToggleSave}
+                      disabled={savingJob}
+                      className={`w-full flex items-center justify-center gap-2 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-all ${
+                        isSaved
+                          ? "border-purple-600 bg-purple-50 text-purple-600 hover:bg-purple-100"
+                          : "border-slate-300 bg-white text-slate-700 hover:border-purple-400 hover:bg-slate-50"
+                      } ${savingJob ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                      {isSaved ? (
+                        <>
+                          <FaBookmark className="text-lg" />
+                          <span>Saved</span>
+                        </>
+                      ) : (
+                        <>
+                          <FaRegBookmark className="text-lg" />
+                          <span>Save Job</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+
                   {loading ? (
                     <Button Name="Loading…" width="w-full" />
                   ) : hasApplied ? (

@@ -57,6 +57,7 @@ const normaliseJobForDashboard = (job = {}) => {
   );
   const applicants = toSafeNumber(
     job.applicants ??
+      job.applicant_count ??
       job.applicants_count ??
       job.total_applicants ??
       job.applicationsCount
@@ -139,21 +140,41 @@ const computeJobStats = (jobs = []) => {
 // Create a new job
 export const createJob = async (req, res) => {
   try {
+    console.log("🚀 createJob function called");
+    console.log("  - User ID:", req.user?.id);
+    console.log("  - Request body:", req.body);
+
     if (!req.body) {
       return res
         .status(400)
         .json({ error: "Request body is required to create a job" });
     }
 
-    const employerId = req.user.id;
+    const userId = req.user.id;
+    console.log("🔍 Looking up employer profile for user:", userId);
 
-    const profile = await findEmployerProfileByUserId(employerId);
+    const profile = await findEmployerProfileByUserId(userId);
+    console.log(
+      "📋 Employer profile found:",
+      profile.length > 0 ? "Yes" : "No"
+    );
 
     if (profile.length === 0) {
       return res
         .status(400)
         .json({ error: "Please complete your employer profile first." });
     }
+
+    // IMPORTANT: Database constraint requires employer_id to reference users.user_id
+    // So we use userId instead of company_id
+    const employerId = userId; // Use user_id because of FK constraint
+    console.log(
+      "📝 Creating job - User ID:",
+      userId,
+      "| Employer ID:",
+      employerId
+    );
+    console.log("📝 Employer profile data:", profile[0]);
 
     const {
       title,
@@ -187,7 +208,7 @@ export const createJob = async (req, res) => {
     }
 
     const insertResult = await createJobRecord([
-      employerId,
+      employerId, // Use user_id because FK constraint points to users.user_id
       title.trim(),
       description,
       location,
@@ -214,16 +235,19 @@ export const createJob = async (req, res) => {
       job: jobPayload,
     });
   } catch (err) {
-    console.error("Create job error:", err);
-    console.error("Error details:", {
+    console.error("❌ Create job error:", err);
+    console.error("❌ Error stack:", err.stack);
+    console.error("❌ Error details:", {
       message: err.message,
       code: err.code,
       sqlMessage: err.sqlMessage,
-      sql: err.sql
+      sql: err.sql,
+      errno: err.errno,
     });
-    res.status(500).json({ 
+    res.status(500).json({
       error: "Server error while creating job",
-      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+      message: err.message,
+      details: process.env.NODE_ENV === "development" ? err.message : undefined,
     });
   }
 };
@@ -242,16 +266,24 @@ export const getAllJobs = async (req, res) => {
 export const getJobById = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log("👁️ Getting job by ID:", id);
+
     const job = await findApprovedJobById(id);
 
-    console.log(id);
-
     if (job.length === 0) {
+      console.log("❌ Job not found:", id);
       return res.status(404).json({ error: "Job not found" });
     }
     let jobRecord = job[0];
+    console.log(
+      "✅ Job found:",
+      jobRecord.title,
+      "| Current views:",
+      jobRecord.views
+    );
 
     try {
+      console.log("📈 Incrementing views for job:", id);
       await incrementJobViews(id);
       const previousViews = Number(
         jobRecord.views ?? jobRecord.view_count ?? jobRecord.total_views ?? 0
@@ -263,12 +295,14 @@ export const getJobById = async (req, res) => {
         ...jobRecord,
         views: updatedViews,
       };
+      console.log("✅ Views incremented to:", updatedViews);
     } catch (viewError) {
-      console.error("Failed to increment job views", viewError);
+      console.error("❌ Failed to increment job views:", viewError);
     }
 
     res.json(jobRecord);
   } catch (err) {
+    console.error("❌ Error in getJobById:", err);
     res.status(500).json({ error: "Server error while fetching job" });
   }
 };
@@ -276,13 +310,51 @@ export const getJobById = async (req, res) => {
 // get jobs by employer
 export const getJobsByEmployer = async (req, res) => {
   try {
-    const employerId = req.user.id;
-    console.log("📋 Fetching jobs for employer:", employerId);
-    const jobRows = await findJobsByEmployerId(employerId);
-    console.log(`✅ Found ${jobRows.length} jobs for employer ${employerId}`);
-    const jobs = jobRows
+    const userId = req.user.id;
+    console.log("📋 Fetching jobs for user:", userId);
+
+    // Database uses user_id as employer_id (FK constraint to users.user_id)
+    const jobRows = await findJobsByEmployerId(userId);
+    console.log(`✅ Found ${jobRows.length} jobs for user ${userId}`);
+
+    // Fetch application counts for each job
+    const jobIds = jobRows.map((job) => job.job_id);
+    let applicationCounts = {};
+
+    if (jobIds.length > 0) {
+      const [counts] = await pool.query(
+        `SELECT job_id, COUNT(*) as count 
+         FROM job_applications 
+         WHERE job_id IN (?)
+         GROUP BY job_id`,
+        [jobIds]
+      );
+
+      counts.forEach((row) => {
+        applicationCounts[row.job_id] = row.count;
+      });
+
+      console.log("📊 Application counts:", applicationCounts);
+    }
+
+    // Add applicant counts to job data
+    const jobsWithCounts = jobRows.map((job) => ({
+      ...job,
+      applicants: applicationCounts[job.job_id] || 0,
+    }));
+
+    const jobs = jobsWithCounts
       .map((job) => normaliseJobForDashboard(job))
       .filter(Boolean);
+
+    if (jobs.length > 0) {
+      console.log("📊 First job with count:", {
+        id: jobs[0].id,
+        title: jobs[0].title,
+        applicants: jobs[0].applicants,
+      });
+    }
+
     const stats = computeJobStats(jobs);
 
     res.json({ jobs, stats });
@@ -296,7 +368,7 @@ export const getJobsByEmployer = async (req, res) => {
 export const updateJob = async (req, res) => {
   try {
     const { id } = req.params;
-    const employerId = req.user.id;
+    const employerId = req.user.id; // Use user_id as employer_id
 
     const fields = [];
     const values = [];
@@ -336,7 +408,7 @@ export const updateJob = async (req, res) => {
     const result = await updateJobRecord(fields, values, id, employerId);
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Job not found" });
+      return res.status(404).json({ error: "Job not found or not authorized" });
     }
 
     let updatedJob = null;
@@ -358,7 +430,7 @@ export const updateJob = async (req, res) => {
 // Delete job
 export const deleteJob = async (req, res) => {
   try {
-    const employerId = req.user.id;
+    const employerId = req.user.id; // Use user_id as employer_id
     const { id } = req.params;
 
     const result = await deleteJobRecord(id, employerId);
@@ -634,12 +706,10 @@ export const applyJob = async (req, res) => {
 
     if (allJobs.length === 0) {
       console.log("Job not found in database, job_id:", job_id);
-      return res
-        .status(404)
-        .json({
-          error:
-            "Job not found. The job may have been removed or is no longer available.",
-        });
+      return res.status(404).json({
+        error:
+          "Job not found. The job may have been removed or is no longer available.",
+      });
     }
 
     const jobData = allJobs[0];
@@ -757,33 +827,46 @@ export const getMyApplications = async (req, res) => {
 // Get all applicants for a specific job (Employer only)
 export const getApplicantsByJob = async (req, res) => {
   try {
-    const employerId = req.user.id;
-    const jobId = req.params.jobId; // Route uses :jobId
-    
-    console.log("🔍 Fetching applicants - Employer ID:", employerId, "| Job ID:", jobId);
+    const employerId = req.user.id; // This is user_id, which is employer_id in jobs table
+    const jobId = req.params.jobId;
 
-    // Verify job ownership
+    console.log(
+      "🔍 Fetching applicants - Employer ID:",
+      employerId,
+      "| Job ID:",
+      jobId
+    );
+
+    // Verify job ownership (employer_id in jobs references user_id in users)
     const [job] = await pool.query(
       "SELECT * FROM jobs WHERE job_id = ? AND employer_id = ?",
       [jobId, employerId]
     );
-    
+
     if (job.length === 0) {
       // Check if job exists at all
-      const [jobExists] = await pool.query("SELECT job_id, employer_id FROM jobs WHERE job_id = ?", [jobId]);
-      
+      const [jobExists] = await pool.query(
+        "SELECT job_id, employer_id FROM jobs WHERE job_id = ?",
+        [jobId]
+      );
+
       if (jobExists.length === 0) {
         console.log("❌ Job not found - Job ID:", jobId);
         return res.status(404).json({ error: "Job not found" });
       } else {
-        console.log("❌ Not authorized - Job belongs to employer:", jobExists[0].employer_id, "| Your ID:", employerId);
-        return res.status(403).json({ 
+        console.log(
+          "❌ Not authorized - Job belongs to user:",
+          jobExists[0].employer_id,
+          "| Your user ID:",
+          employerId
+        );
+        return res.status(403).json({
           error: "Not authorized for this job",
-          message: "This job belongs to a different employer"
+          message: "This job belongs to a different employer",
         });
       }
     }
-    
+
     console.log("✅ Job ownership verified");
 
     // Fetch applicants
@@ -831,7 +914,15 @@ export const updateApplicationStatus = async (req, res) => {
     console.log("🔄 Updating application status:", applicationId, "to", status);
 
     // Allow all status values from frontend
-    const validStatuses = ["pending", "reviewed", "shortlisted", "interviewed", "rejected", "Approved", "Rejected"];
+    const validStatuses = [
+      "pending",
+      "reviewed",
+      "shortlisted",
+      "interviewed",
+      "rejected",
+      "Approved",
+      "Rejected",
+    ];
     if (!validStatuses.includes(status))
       return res.status(400).json({ error: "Invalid status" });
 
@@ -906,7 +997,7 @@ We regret to inform you that your application for the job "${app.job_title}" has
           subject,
           text,
         });
-        
+
         console.log("📧 Email notification sent");
       } catch (emailErr) {
         console.error("⚠️ Email sending failed:", emailErr.message);

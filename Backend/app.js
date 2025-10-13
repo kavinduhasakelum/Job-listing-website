@@ -28,6 +28,8 @@ app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
 app.use('/job', (req, res, next) => {
     console.log('🔀 Job router - Path:', req.path, '| Method:', req.method);
+    console.log('   Full URL:', req.url);
+    console.log('   Original URL:', req.originalUrl);
     next();
 }, jobRoutes);
 app.use('/admin', adminRoutes);

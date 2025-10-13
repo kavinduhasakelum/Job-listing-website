@@ -451,6 +451,10 @@ function EmployerDashboard() {
   }, [deleteTarget]);
 
   const handleViewApplicants = useCallback((job) => {
+    console.log("👀 View Applicants clicked for job:", job);
+    console.log("  - job.id:", job.id);
+    console.log("  - job.jobId:", job.jobId);
+    console.log("  - job.job_id:", job.job_id);
     setSelectedJobForApplicants(job);
     setActiveTab("applicants");
   }, []);
@@ -899,10 +903,18 @@ function EmployerDashboard() {
                     ))}
                   </select>
                 </div>
-                <ApplicantManagement
-                  jobId={selectedJobForApplicants.jobId || selectedJobForApplicants.id}
-                  jobTitle={selectedJobForApplicants.title}
-                />
+                {(() => {
+                  const jobId = selectedJobForApplicants.jobId || selectedJobForApplicants.id;
+                  console.log("🔍 Passing to ApplicantManagement:");
+                  console.log("  - jobId:", jobId);
+                  console.log("  - selectedJobForApplicants:", selectedJobForApplicants);
+                  return (
+                    <ApplicantManagement
+                      jobId={jobId}
+                      jobTitle={selectedJobForApplicants.title}
+                    />
+                  );
+                })()}
               </div>
             ) : (
               <div className="py-12 text-center">

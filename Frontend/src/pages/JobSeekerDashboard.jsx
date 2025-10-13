@@ -123,14 +123,19 @@ const JobSeekerDashboard = () => {
     }
   }, []);
 
-  // Fetch saved jobs (placeholder - will be implemented)
+  // Fetch saved jobs
   const fetchSavedJobs = useCallback(async () => {
     try {
       setSavedJobsLoading(true);
-      // TODO: Implement saved jobs API
-      setSavedJobs([]);
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API_BASE_URL}/job/saved`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSavedJobs(Array.isArray(response.data.jobs) ? response.data.jobs : []);
+      console.log("✅ Saved jobs fetched:", response.data.jobs?.length || 0);
     } catch (err) {
-      console.error("Error fetching saved jobs:", err);
+      console.error("❌ Error fetching saved jobs:", err);
+      setSavedJobs([]);
     } finally {
       setSavedJobsLoading(false);
     }
@@ -208,9 +213,9 @@ const JobSeekerDashboard = () => {
   // Calculate statistics
   const stats = {
     totalApplications: applications.length,
-    pendingApplications: applications.filter(app => app.status === "pending").length,
-    shortlisted: applications.filter(app => app.status === "shortlisted").length,
-    interviewed: applications.filter(app => app.status === "interviewed").length,
+    pendingApplications: applications.filter(app => app.status?.toLowerCase() === "pending").length,
+    shortlisted: applications.filter(app => app.status?.toLowerCase() === "shortlisted").length,
+    interviewed: applications.filter(app => app.status?.toLowerCase() === "interviewed").length,
     savedJobs: savedJobs.length,
     profileCompletion: profile ? 
       (profile.full_name ? 25 : 0) +
@@ -437,7 +442,7 @@ const JobSeekerDashboard = () => {
                         </div>
                         <span
                           className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                            statusColors[app.status] || statusColors.pending
+                            statusColors[app.status?.toLowerCase()] || statusColors.pending
                           }`}
                         >
                           {app.status?.charAt(0).toUpperCase() + app.status?.slice(1)}
@@ -759,7 +764,7 @@ const JobSeekerDashboard = () => {
                         </div>
                         <span
                           className={`inline-flex items-center rounded-full border px-4 py-2 text-sm font-medium ${
-                            statusColors[app.status] || statusColors.pending
+                            statusColors[app.status?.toLowerCase()] || statusColors.pending
                           }`}
                         >
                           {app.status?.charAt(0).toUpperCase() + app.status?.slice(1)}
@@ -775,17 +780,77 @@ const JobSeekerDashboard = () => {
           {/* Saved Jobs Tab */}
           {activeTab === "saved" && (
             <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-slate-900">Saved Jobs</h2>
-              
-              <div className="rounded-lg bg-blue-50 p-8 text-center">
-                <FaBookmark className="mx-auto h-16 w-16 text-blue-400" />
-                <h3 className="mt-4 text-lg font-semibold text-blue-900">
-                  Coming Soon
-                </h3>
-                <p className="mt-2 text-sm text-blue-800">
-                  Save jobs you're interested in to review and apply later.
-                </p>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-slate-900">Saved Jobs</h2>
+                <button
+                  onClick={fetchSavedJobs}
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                >
+                  Refresh
+                </button>
               </div>
+              
+              {savedJobs.length === 0 ? (
+                <div className="rounded-lg bg-blue-50 p-8 text-center">
+                  <FaBookmark className="mx-auto h-16 w-16 text-blue-400" />
+                  <h3 className="mt-4 text-lg font-semibold text-blue-900">
+                    No Saved Jobs Yet
+                  </h3>
+                  <p className="mt-2 text-sm text-blue-800">
+                    Browse jobs and click the bookmark icon to save them for later.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {savedJobs.map((job) => (
+                    <div
+                      key={job.id}
+                      className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-slate-900">{job.title}</h3>
+                          <p className="text-sm text-slate-600">{job.location}</p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {job.tags?.map((tag, idx) => (
+                              <span
+                                key={idx}
+                                className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const token = localStorage.getItem("token");
+                              await axios.delete(`${API_BASE_URL}/job/${job.id}/save`, {
+                                headers: { Authorization: `Bearer ${token}` },
+                              });
+                              fetchSavedJobs();
+                            } catch (err) {
+                              console.error("Error removing saved job:", err);
+                            }
+                          }}
+                          className="rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50"
+                        >
+                          <FaBookmark className="h-5 w-5" />
+                        </button>
+                      </div>
+                      <div className="mt-4 flex gap-2">
+                        <button
+                          onClick={() => navigate(`/job-view?jobId=${job.id}`)}
+                          className="flex-1 rounded-lg border border-purple-600 px-4 py-2 text-sm font-medium text-purple-600 transition-colors hover:bg-purple-50"
+                        >
+                          View Details
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
