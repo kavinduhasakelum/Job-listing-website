@@ -1,24 +1,22 @@
 import pool from "../config/dbConnection.js";
+import {
+  getAllUsers as getAllUsersModel,
+  getActiveUsers as getActiveUsersModel,
+  getInactiveUsers as getInactiveUsersModel,
+  getActiveUserById as getActiveUserByIdModel,
+  getUserByIdAll as getUserByIdAllModel,
+  getInactiveUserById as getInactiveUserByIdModel,
+  deleteUserById,
+  softDeleteUserById,
+  findUsersByRole
+} from "../models/userModel.js";
+
+import { findJobById } from "../models/jobModel.js";
 import { sendEmail } from "../utils/emailClient.js";
-import {
-  GET_ALL_USERS,
-  GET_ACTIVE_USERS,
-  GET_INACTIVE_USERS,
-  GET_USER_BY_ID_ALL,
-  GET_ACTIVE_USER_BY_ID,
-  GET_INACTIVE_USER_BY_ID,
-  SOFT_DELETE_USER_BY_ID,
-  DELETE_USER_BY_ID,
-} from "../queries/authQueries.js";
-import {
-  getJobsQuery,
-  getJobByIdQuery,
-} from "../queries/jobQueries.js";
-import {
-  getEmployerDetailsQuery,
-  getJobSeekerDetailsQuery,
-} from "../queries/userQueries.js";
-import { findJobById, updateJobStatus } from "../models/jobModel.js";
+
+/**  ===============================
+ *      --- USER MANAGEMENT ---
+ *   =============================== */
 
 // View all users
 export const getAllUsers = async (req, res) => {
@@ -143,7 +141,46 @@ export const getUsersByRole = async (req, res) => {
   }
 };
 
-// --- JOBS MANAGEMENT ---
+/**  ===============================
+ *      --- JOBS MANAGEMENT ---
+ *   =============================== */
+
+// Get all jobs (any status)
+export const getAllJobs = async (req, res) => {
+  try {
+    const [jobs] = await pool.query("SELECT * FROM jobs ORDER BY created_at DESC");
+    res.status(200).json(jobs);
+  } catch (err) {
+    console.error("Error fetching jobs:", err);
+    res.status(500).json({ error: "Error fetching jobs" });
+  }
+};
+
+// Get pending jobs
+export const getPendingJobs = async (req, res) => {
+  try {
+    const [jobs] = await pool.query(
+      "SELECT * FROM jobs WHERE status = 'pending' ORDER BY created_at DESC"
+    );
+    res.status(200).json(jobs);
+  } catch (err) {
+    console.error("Error fetching pending jobs:", err);
+    res.status(500).json({ error: "Error fetching pending jobs" });
+  }
+};
+
+// Get rejected jobs
+export const getRejectedJobs = async (req, res) => {
+  try {
+    const [jobs] = await pool.query(
+      "SELECT * FROM jobs WHERE status = 'rejected' ORDER BY created_at DESC"
+    );
+    res.status(200).json(jobs);
+  } catch (err) {
+    console.error("Error fetching rejected jobs:", err);
+    res.status(500).json({ error: "Error fetching rejected jobs" });
+  }
+};
 
 // Approve or reject job
 export const approveOrRejectJob = async (req, res) => {
@@ -160,9 +197,9 @@ export const approveOrRejectJob = async (req, res) => {
 
     // Fetch job and employer info
     const [jobResult] = await pool.query(
-      `SELECT j.title, u.email 
-       FROM jobs j 
-       JOIN users u ON j.employer_id = u.user_id 
+      `SELECT j.title, u.email
+       FROM jobs j
+       JOIN users u ON j.employer_id = u.user_id
        WHERE j.job_id = ?`,
       [jobId]
     );
@@ -179,11 +216,11 @@ export const approveOrRejectJob = async (req, res) => {
       [status, status === "rejected" ? reason || "Not specified" : null, jobId]
     );
 
-    // Send appropriate email
+    // Send appropriate email using the imported sendEmail function
     const mailOptions =
       status === "approved"
         ? {
-            from: process.env.EMAIL_USER,
+            // No need for 'from' here as sendEmail handles SMTP_FROM/SMTP_USER
             to: email,
             subject: `Job Approved ✅ - ${title}`,
             html: `
@@ -192,7 +229,7 @@ export const approveOrRejectJob = async (req, res) => {
             `,
           }
         : {
-            from: process.env.EMAIL_USER,
+            // No need for 'from' here as sendEmail handles SMTP_FROM/SMTP_USER
             to: email,
             subject: `Job Rejected ❌ - ${title}`,
             html: `
@@ -202,7 +239,8 @@ export const approveOrRejectJob = async (req, res) => {
             `,
           };
 
-    await transporter.sendMail(mailOptions);
+    // Use sendEmail function
+    await sendEmail(mailOptions);
 
     // Send response
     res.json({
@@ -219,22 +257,30 @@ export const approveOrRejectJob = async (req, res) => {
 
 // Delete job
 export const deleteJobByAdmin = async (req, res) => {
+  const { jobId } = req.params; // Destructure and rename id to jobId for clarity
+  // Ensure only admins can access this route
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({ error: "Access denied. Only administrators can delete jobs." });
+  }
+
   try {
-    const employerId = req.user.id;
-    const { id } = req.params;
-
-    const result = await deleteJobRecord(id, employerId);
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Job not found or not authorized" });
+    // 1. Check if the job exists using the existing findJobById from jobModel.js
+    const existingJob = await findJobById(jobId);
+    if (existingJob.length === 0) {
+      return res.status(404).json({ error: "Job not found." });
     }
 
-    const jobRows = await findJobsByEmployerId(employerId);
-    const jobs = jobRows.map((job) => normaliseJobForDashboard(job)).filter(Boolean);
-    const stats = computeJobStats(jobs);
+    // 2. Perform the deletion directly using pool.query for admin
+    const [result] = await pool.query("DELETE FROM jobs WHERE job_id = ?", [jobId]);
 
-    res.json({ message: "Job deleted successfully", jobs, stats });
+    if (result.affectedRows === 0) {
+      // This case might mean it was found but for some reason not deleted (e.g., race condition)
+      return res.status(500).json({ error: "Failed to delete job. It might no longer exist." });
+    }
+
+    res.json({ message: "Job permanently deleted by admin successfully." });
   } catch (err) {
-    res.status(500).json({ error: "Server error while deleting job" });
+    console.error("Admin delete job error:", err);
+    res.status(500).json({ error: "Server error while deleting job." });
   }
 };

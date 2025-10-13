@@ -7,7 +7,6 @@ import {
   getJobsByEmployer,
   updateJob,
   deleteJob,
-  approveOrRejectJob,
   getJobsByCompany,
   saveJob,
   getSavedJobs,
@@ -50,9 +49,6 @@ router.put(
 
 // Delete Job
 router.delete("/:id", verifyToken, isEmployer, deleteJob);
-
-// Approve Job (Admin only)
-router.put("/approve/:jobId", approveOrRejectJob);
 
 // Save a job
 router.post("/save-job/:jobId", verifyToken, saveJob);
