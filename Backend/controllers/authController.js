@@ -7,19 +7,10 @@ import {
   findUserByName,
   createUser,
   getUserProfileById as getUserProfileByIdModel,
-  getAllUsers as getAllUsersModel,
-  getActiveUsers as getActiveUsersModel,
-  getInactiveUsers as getInactiveUsersModel,
-  getUserByIdAll as getUserByIdAllModel,
-  getActiveUserById as getActiveUserByIdModel,
-  getInactiveUserById as getInactiveUserByIdModel,
-  softDeleteUserById,
-  deleteUserById,
   updateUserPassword,
   findUserByEmailCaseInsensitive,
   updatePasswordByUserId,
   verifyUserEmailIfPending,
-  findUsersByRole,
   findUserPasswordHashById,
 } from "../models/userModel.js";
 
@@ -27,6 +18,7 @@ const ALLOWED_ROLES = ["admin", "employer", "jobseeker"];
 
 const CLIENT_BASE_URL = process.env.CLIENT_URL || "http://localhost:3000";
 
+// User Registration
 export const register = async (req, res) => {
   const { name, email, password, role } = req.body;
 
@@ -80,6 +72,7 @@ export const register = async (req, res) => {
   }
 };
 
+// User Login
 export const login = async (req, res) => {
   const { name_or_email, password } = req.body;
 
@@ -122,6 +115,7 @@ export const login = async (req, res) => {
   }
 };
 
+// Verify session and get user profile
 export const verifySession = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -154,122 +148,6 @@ export const verifySession = async (req, res) => {
   } catch (err) {
     console.error("Verify session error:", err);
     return res.status(500).json({ error: "Failed to verify session" });
-  }
-};
-
-// View All Users (including deleted)
-export const getAllUsers = async (req, res) => {
-  try {
-    const users = await getAllUsersModel();
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// View Active Users
-export const getActiveUsers = async (req, res) => {
-  try {
-    const users = await getActiveUsersModel();
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// View Inactive (soft-deleted) Users
-export const getInactiveUsers = async (req, res) => {
-  try {
-    const users = await getInactiveUsersModel();
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// View Any User by ID
-export const getUserByIdAll = async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const users = await getUserByIdAllModel(id);
-    if (users.length === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    res.json(users[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// View Active User by ID
-export const getActiveUserById = async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const users = await getActiveUserByIdModel(id);
-    if (users.length === 0) {
-      return res.status(404).json({ error: "Active user not found" });
-    }
-    res.json(users[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// View Inactive User by ID
-export const getInactiveUserById = async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const users = await getInactiveUserByIdModel(id);
-    if (users.length === 0) {
-      return res.status(404).json({ error: "Inactive user not found" });
-    }
-    res.json(users[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// Soft Delete User (any authenticated user can delete their own account)
-export const softDeleteUser = async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const user = await getActiveUserByIdModel(id);
-    if (user.length === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    await softDeleteUserById(id);
-    res.json({ message: "User soft deleted (marked as deleted)" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// Hard Delete (admin only)
-export const hardDeleteUser = async (req, res) => {
-  const { id } = req.params;
-
-  // Assuming req.user.role is set by auth middleware
-  if (req.user?.role !== "admin") {
-    return res
-      .status(403)
-      .json({ error: "Only admin can perform hard delete" });
-  }
-
-  try {
-    const user = await getUserByIdAllModel(id);
-    if (user.length === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    await deleteUserById(id);
-    res.json({ message: "User permanently deleted" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
 };
 
@@ -451,31 +329,6 @@ export const changePassword = async (req, res) => {
     res.json({ message: "Password changed successfully" });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
-  }
-};
-
-// Get User By Role (Admin Only)
-export const getUsersByRole = async (req, res) => {
-  try {
-    const { role } = req.params;
-
-    const normalizedRole = role.toLowerCase();
-    if (!ALLOWED_ROLES.includes(normalizedRole)) {
-      return res.status(400).json({ error: "Invalid role provided" });
-    }
-
-    const users = await findUsersByRole(normalizedRole);
-
-    if (users.length === 0) {
-      return res
-        .status(404)
-        .json({ error: `No users found with role: ${role}` });
-    }
-
-    res.json(users);
-  } catch (err) {
-    console.error("Get users by role error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
