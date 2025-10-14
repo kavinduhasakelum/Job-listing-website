@@ -7,7 +7,6 @@ import {
   getJobsByEmployer,
   updateJob,
   deleteJob,
-  approveOrRejectJob,
   getJobsByCompany,
   getApplicantsByJob,
   updateApplicationStatus,
@@ -75,7 +74,31 @@ router.put(
 
 router.delete("/:id", verifyToken, isEmployer, deleteJob);
 
-// Must be LAST - generic GET by ID
+// Save a job
+router.post("/save-job/:jobId", verifyToken, saveJob);
+
+// Get all saved jobs of jobseeker
+router.get("/save-job", verifyToken, getSavedJobs);
+
+// Remove a saved job
+router.delete("/save-job/:jobId", verifyToken, removeSavedJob);
+
+// View all approved jobs by a company (Public)
+router.get("/company/:employerId", getJobsByCompany);
+
+// Apply for a job
+router.post("/apply", verifyToken, upload.single("resume"), applyJob);
+
+// Get all jobs posted by the logged-in jobseeker
+router.get("/my-applications", verifyToken, getMyApplications);
+
+// Get all jobs posted by the logged-in employer
+router.get("/applicants/:job_id", verifyToken, getApplicantsByJob);
+
+// Update application status (Approve/Reject) - Employer only
+router.patch("/application/:application_id/status", verifyToken, updateApplicationStatus);
+
+router.get("/", getAllJobs);
 router.get("/:id", getJobById);
 
 // Log all registered routes

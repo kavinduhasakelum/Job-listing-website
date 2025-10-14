@@ -13,7 +13,26 @@ import {
   findApprovedJobsByCompany,
   incrementJobViews,
 } from "../models/jobModel.js";
+<<<<<<< HEAD
 // Note: SQL queries are written inline in this controller for flexibility
+=======
+import { 
+  checkExistingSavedJobQuery,
+  insertSavedJobQuery,
+  getSavedJobsByJobseekerQuery,
+  removeSavedJobQuery,
+  findSeekerByUserIdQuery,
+  findApprovedJobByIdQuery,
+  checkExistingApplicationQuery,
+  insertJobApplicationQuery,
+  getSeekerIdByUserIdQuery,
+  getApplicationsBySeekerIdQuery,
+  verifyJobOwnershipQuery,
+  getApplicantsByJobIdQuery,
+  getApplicationDetailsQuery,
+  updateApplicationStatusQuery
+ } from "../queries/jobQueries.js";
+>>>>>>> db843ed422c030a6b1997336f1c4f7fdb08bb2ef
 import { findEmployerProfileByUserId } from "../models/employerModel.js";
 import { findUserEmailById } from "../models/userModel.js";
 import nodemailer from "nodemailer";
@@ -460,6 +479,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+<<<<<<< HEAD
 // Approve or Reject Job (Admin only)
 export const approveOrRejectJob = async (req, res) => {
   try {
@@ -534,6 +554,8 @@ export const approveOrRejectJob = async (req, res) => {
   }
 };
 
+=======
+>>>>>>> db843ed422c030a6b1997336f1c4f7fdb08bb2ef
 export const getEmployerJobs = async (req, res) => {
   try {
     const jobs = await findJobById(jobId);
@@ -582,8 +604,13 @@ export const saveJob = async (req, res) => {
 
     // Check if already saved (jobseeker_id in saved_jobs table references users.user_id)
     const [existing] = await pool.query(
+<<<<<<< HEAD
       "SELECT * FROM saved_jobs WHERE jobseeker_id = ? AND job_id = ?",
       [userId, jobId]
+=======
+      checkExistingSavedJobQuery,
+      [jobseekerId, jobId]
+>>>>>>> db843ed422c030a6b1997336f1c4f7fdb08bb2ef
     );
     
     if (existing.length > 0) {
@@ -592,8 +619,13 @@ export const saveJob = async (req, res) => {
 
     // Save the job (jobseeker_id is actually user_id based on FK constraint)
     await pool.query(
+<<<<<<< HEAD
       "INSERT INTO saved_jobs (jobseeker_id, job_id) VALUES (?, ?)",
       [userId, jobId]
+=======
+      insertSavedJobQuery,
+      [jobseekerId, jobId]
+>>>>>>> db843ed422c030a6b1997336f1c4f7fdb08bb2ef
     );
 
     console.log("✅ Job saved successfully");
@@ -630,6 +662,7 @@ export const getSavedJobs = async (req, res) => {
 
     // Get saved jobs with job details (jobseeker_id in saved_jobs references users.user_id)
     const [rows] = await pool.query(
+<<<<<<< HEAD
       `SELECT 
         j.job_id as id,
         j.title,
@@ -647,6 +680,10 @@ export const getSavedJobs = async (req, res) => {
       WHERE sj.jobseeker_id = ?
       ORDER BY j.created_at DESC`,
       [userId]
+=======
+      getSavedJobsByJobseekerQuery,
+      [jobseekerId]
+>>>>>>> db843ed422c030a6b1997336f1c4f7fdb08bb2ef
     );
 
     console.log("✅ Found", rows.length, "saved jobs");
@@ -676,8 +713,13 @@ export const removeSavedJob = async (req, res) => {
 
     // Remove the saved job (jobseeker_id in saved_jobs references users.user_id)
     const [result] = await pool.query(
+<<<<<<< HEAD
       "DELETE FROM saved_jobs WHERE jobseeker_id = ? AND job_id = ?",
       [userId, jobId]
+=======
+      removeSavedJobQuery,
+      [jobseekerId, jobId]
+>>>>>>> db843ed422c030a6b1997336f1c4f7fdb08bb2ef
     );
 
     if (result.affectedRows === 0) {
@@ -736,7 +778,7 @@ export const applyJob = async (req, res) => {
 
     // Check if jobseeker profile exists
     const [seekerRows] = await pool.query(
-      "SELECT seeker_id FROM job_seeker WHERE user_id = ?",
+      findSeekerByUserIdQuery,
       [userId]
     );
     if (seekerRows.length === 0) {
@@ -748,9 +790,9 @@ export const applyJob = async (req, res) => {
 
     const seekerId = seekerRows[0].seeker_id;
 
-    // Check if job exists first
-    const [allJobs] = await pool.query(
-      "SELECT job_id, title as job_title, status FROM jobs WHERE job_id = ?",
+    // Check if job exists and is approved
+    const [job] = await pool.query(
+      findApprovedJobByIdQuery,
       [job_id]
     );
 
@@ -782,7 +824,7 @@ export const applyJob = async (req, res) => {
 
     // Prevent duplicate applications
     const [existing] = await pool.query(
-      "SELECT * FROM job_applications WHERE job_id = ? AND seeker_id = ?",
+      checkExistingApplicationQuery,
       [job_id, seekerId]
     );
     if (existing.length > 0) {
@@ -807,7 +849,11 @@ export const applyJob = async (req, res) => {
 
     // Insert application into DB
     await pool.query(
+<<<<<<< HEAD
       "INSERT INTO job_applications (job_id, seeker_id, cover_letter, resume_url, status) VALUES (?, ?, ?, ?, 'Pending')",
+=======
+      insertJobApplicationQuery,
+>>>>>>> db843ed422c030a6b1997336f1c4f7fdb08bb2ef
       [job_id, seekerId, cover_letter, resumePath]
     );
 
@@ -852,7 +898,7 @@ export const getMyApplications = async (req, res) => {
 
     // Get seeker_id
     const [seekerRows] = await pool.query(
-      "SELECT seeker_id FROM job_seeker WHERE user_id = ?",
+      getSeekerIdByUserIdQuery,
       [userId]
     );
     if (seekerRows.length === 0)
@@ -862,12 +908,16 @@ export const getMyApplications = async (req, res) => {
 
     // Fetch applications
     const [applications] = await pool.query(
+<<<<<<< HEAD
       `SELECT a.*, j.title, j.company_logo, j.location, e.company_name 
        FROM job_applications a
        JOIN jobs j ON a.job_id = j.job_id
        LEFT JOIN employers e ON j.employer_id = e.user_id
        WHERE a.seeker_id = ?
        ORDER BY a.applied_at DESC`,
+=======
+      getApplicationsBySeekerIdQuery,
+>>>>>>> db843ed422c030a6b1997336f1c4f7fdb08bb2ef
       [jobseekerId]
     );
 
@@ -893,8 +943,8 @@ export const getApplicantsByJob = async (req, res) => {
 
     // Verify job ownership (employer_id in jobs references user_id in users)
     const [job] = await pool.query(
-      "SELECT * FROM jobs WHERE job_id = ? AND employer_id = ?",
-      [jobId, employerId]
+      verifyJobOwnershipQuery,
+      [job_id, employerId]
     );
 
     if (job.length === 0) {
@@ -925,15 +975,8 @@ export const getApplicantsByJob = async (req, res) => {
 
     // Fetch applicants
     const [applicants] = await pool.query(
-      `SELECT a.application_id, a.status, a.applied_at,
-              js.full_name AS jobseeker_name,
-              u.email AS jobseeker_email,
-              a.cover_letter, a.resume_url
-         FROM job_applications a
-         JOIN job_seeker js ON a.seeker_id = js.seeker_id
-         JOIN users u ON js.user_id = u.user_id
-        WHERE a.job_id = ?`,
-      [jobId]
+      getApplicantsByJobIdQuery,
+      [job_id]
     );
 
     console.log(`✅ Found ${applicants.length} applicants for job ${jobId}`);
@@ -982,19 +1025,8 @@ export const updateApplicationStatus = async (req, res) => {
 
     // Fetch application + job + jobseeker info
     const [rows] = await pool.query(
-      `SELECT 
-          a.application_id,
-          a.job_id,
-          j.title AS job_title,
-          j.employer_id,
-          u.email,
-          u.userName AS jobseeker_name
-       FROM job_applications a
-       JOIN jobs j ON a.job_id = j.job_id
-       JOIN job_seeker js ON a.seeker_id = js.seeker_id
-       JOIN users u ON js.user_id = u.user_id
-       WHERE a.application_id = ?`,
-      [applicationId]
+      getApplicationDetailsQuery,
+      [application_id]
     );
 
     if (rows.length === 0) {
@@ -1014,8 +1046,8 @@ export const updateApplicationStatus = async (req, res) => {
 
     // Update status
     await pool.query(
-      "UPDATE job_applications SET status = ? WHERE application_id = ?",
-      [status, applicationId]
+      updateApplicationStatusQuery,
+      [status, application_id]
     );
 
     console.log("✅ Status updated successfully");
