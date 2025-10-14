@@ -3,6 +3,7 @@ import express from "express";
 import {
   createJob,
   getAllJobs,
+  getFeaturedJobs,
   getJobById,
   getJobsByEmployer,
   updateJob,
@@ -42,6 +43,7 @@ router.post(
 
 // Specific routes FIRST
 router.get("/", getAllJobs);
+router.get("/featured", getFeaturedJobs);
 router.get("/my-jobs", verifyToken, isEmployer, getJobsByEmployer);
 router.get("/my/applications", verifyToken, getMyApplications);
 router.get("/saved", verifyToken, getSavedJobs);

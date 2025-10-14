@@ -4,6 +4,7 @@ import {
   useLocation,
   useNavigate,
   useSearchParams,
+  useParams,
 } from "react-router-dom";
 import { FaBookmark, FaRegBookmark } from "react-icons/fa";
 import Button from "../components/Button";
@@ -132,6 +133,7 @@ function JobView() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const { id: jobIdFromParams } = useParams();
   const { user } = useAuth();
 
   const jobState = location.state?.job ?? location.state?.jobData ?? null;
@@ -148,7 +150,7 @@ function JobView() {
   const jobIdFromQuery =
     searchParams.get("jobId") ?? searchParams.get("id") ?? null;
 
-  const resolvedJobId = (jobIdFromQuery ?? jobIdFromState)?.toString() ?? null;
+  const resolvedJobId = (jobIdFromParams ?? jobIdFromQuery ?? jobIdFromState)?.toString() ?? null;
 
   // Debug: Log initial page load
   console.log("🔵 JobView Component Loaded");

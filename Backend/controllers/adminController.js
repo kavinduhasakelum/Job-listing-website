@@ -145,10 +145,6 @@ export const getUsersByRole = async (req, res) => {
  *      --- JOBS MANAGEMENT ---
  *   =============================== */
 
-<<<<<<< HEAD
-// Get all jobs (admin view)
-export const getAllJobs = async (req, res) => {
-=======
 // Get pending jobs
 export const getPendingJobs = async (req, res) => {
   try {
@@ -177,7 +173,6 @@ export const getRejectedJobs = async (req, res) => {
 
 // Get all jobs (admin view) - combines all status
 export const getAllJobsAdmin = async (req, res) => {
->>>>>>> feature/add-AdminDashboard
   try {
     const [jobs] = await pool.query(`
       SELECT 

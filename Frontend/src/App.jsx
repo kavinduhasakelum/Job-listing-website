@@ -48,6 +48,7 @@ const router = createBrowserRouter([
         ),
       },
       { path: "job", element: <JobView /> },
+      { path: "job/:id", element: <JobView /> },
       { path: "job-view", element: <JobView /> },
       { path: "all-jobs", element: <AllJobs /> },
       {
