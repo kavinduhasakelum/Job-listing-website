@@ -46,8 +46,7 @@ router.get("/my/applications", verifyToken, getMyApplications);
 router.get("/saved", verifyToken, getSavedJobs);
 router.get("/company/:employerId", getJobsByCompany);
 
-// Admin approval
-router.put("/approve/:jobId", verifyToken, isAdmin, approveOrRejectJob);
+// Note: Admin approval route moved to adminRoutes.js
 
 // Save/Unsave job routes - BEFORE /:id routes
 router.post("/:jobId/save", verifyToken, saveJob);

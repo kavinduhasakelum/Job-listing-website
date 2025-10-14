@@ -112,9 +112,9 @@ const JobSeekerDashboard = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Backend returns array directly, not wrapped in object
-      setApplications(Array.isArray(data) ? data : []);
-      console.log("✅ Applications fetched:", data);
+      // Backend returns { applications: [...] }
+      setApplications(Array.isArray(data.applications) ? data.applications : []);
+      console.log("✅ Applications fetched:", data.applications);
     } catch (err) {
       console.error("❌ Error fetching applications:", err);
       setApplications([]);

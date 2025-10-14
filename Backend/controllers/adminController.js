@@ -145,17 +145,6 @@ export const getUsersByRole = async (req, res) => {
  *      --- JOBS MANAGEMENT ---
  *   =============================== */
 
-// Get all jobs (any status)
-export const getAllJobs = async (req, res) => {
-  try {
-    const [jobs] = await pool.query("SELECT * FROM jobs ORDER BY created_at DESC");
-    res.status(200).json(jobs);
-  } catch (err) {
-    console.error("Error fetching jobs:", err);
-    res.status(500).json({ error: "Error fetching jobs" });
-  }
-};
-
 // Get pending jobs
 export const getPendingJobs = async (req, res) => {
   try {
@@ -182,36 +171,24 @@ export const getRejectedJobs = async (req, res) => {
   }
 };
 
-// Get all jobs (admin view)
-export const getAllJobs = async (req, res) => {
+// Get all jobs (admin view) - combines all status
+export const getAllJobsAdmin = async (req, res) => {
   try {
-    const jobs = await findAllJobs();
+    const [jobs] = await pool.query(`
+      SELECT 
+        j.*,
+        u.userName as employer_name,
+        e.company_name,
+        (SELECT COUNT(*) FROM job_applications WHERE job_id = j.job_id) as applicant_count
+      FROM jobs j
+      LEFT JOIN users u ON j.employer_id = u.user_id
+      LEFT JOIN employers e ON j.employer_id = e.user_id
+      ORDER BY j.created_at DESC
+    `);
     res.json(jobs);
   } catch (err) {
     console.error("Get all jobs error:", err);
     res.status(500).json({ error: "Server error while fetching jobs" });
-  }
-};
-
-// Get pending jobs
-export const getPendingJobs = async (req, res) => {
-  try {
-    const jobs = await findPendingJobs();
-    res.json(jobs);
-  } catch (err) {
-    console.error("Get pending jobs error:", err);
-    res.status(500).json({ error: "Server error while fetching pending jobs" });
-  }
-};
-
-// Get rejected jobs
-export const getRejectedJobs = async (req, res) => {
-  try {
-    const jobs = await findRejectedJobs();
-    res.json(jobs);
-  } catch (err) {
-    console.error("Get rejected jobs error:", err);
-    res.status(500).json({ error: "Server error while fetching rejected jobs" });
   }
 };
 
@@ -236,7 +213,16 @@ export const getJobsByStatus = async (req, res) => {
 // Get admin dashboard statistics
 export const getDashboardStats = async (req, res) => {
   try {
-    const jobStats = await getJobStatistics();
+    // Get job statistics with views
+    const [jobStats] = await pool.query(`
+      SELECT
+        COUNT(*) as total_jobs,
+        SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved_jobs,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_jobs,
+        SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_jobs,
+        COALESCE(SUM(views), 0) as total_views
+      FROM jobs
+    `);
     
     // Get user statistics
     const [userStats] = await pool.query(`
@@ -249,9 +235,20 @@ export const getDashboardStats = async (req, res) => {
       FROM users
     `);
 
+    // Get application statistics
+    const [appStats] = await pool.query(`
+      SELECT
+        COUNT(*) as total_applications,
+        SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending_applications,
+        SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) as approved_applications,
+        SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) as rejected_applications
+      FROM job_applications
+    `);
+
     res.json({
-      jobs: jobStats,
+      jobs: jobStats[0],
       users: userStats[0],
+      applications: appStats[0],
     });
   } catch (err) {
     console.error("Get dashboard stats error:", err);
@@ -285,7 +282,8 @@ export const approveOrRejectJob = async (req, res) => {
       return res.status(404).json({ error: "Job not found" });
     }
 
-    const job = jobs[0];
+    const job = jobResult[0];
+    const { title, email } = job;
 
     // Update job status and optional rejection reason
     await pool.query(
@@ -325,7 +323,7 @@ export const approveOrRejectJob = async (req, res) => {
         status === "approved"
           ? "Job approved successfully ✅"
           : "Job rejected ❌",
-      job: jobs[0],
+      job: job,
     });
   } catch (err) {
     console.error("Approve/Reject job error:", err);
