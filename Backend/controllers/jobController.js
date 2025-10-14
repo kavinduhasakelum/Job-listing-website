@@ -13,22 +13,7 @@ import {
   findApprovedJobsByCompany,
   incrementJobViews,
 } from "../models/jobModel.js";
-import { 
-  checkExistingSavedJobQuery,
-  insertSavedJobQuery,
-  getSavedJobsByJobseekerQuery,
-  removeSavedJobQuery,
-  findSeekerByUserIdQuery,
-  findApprovedJobByIdQuery,
-  checkExistingApplicationQuery,
-  insertJobApplicationQuery,
-  getSeekerIdByUserIdQuery,
-  getApplicationsBySeekerIdQuery,
-  verifyJobOwnershipQuery,
-  getApplicantsByJobIdQuery,
-  getApplicationDetailsQuery,
-  updateApplicationStatusQuery
- } from "../queries/jobQueries.js";
+// Note: SQL queries are written inline in this controller for flexibility
 import { findEmployerProfileByUserId } from "../models/employerModel.js";
 import { findUserEmailById } from "../models/userModel.js";
 import nodemailer from "nodemailer";
@@ -475,6 +460,80 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Approve or Reject Job (Admin only)
+export const approveOrRejectJob = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const { status, reason } = req.body; // status = 'approved' | 'rejected'
+
+    // Validate input
+    if (!["approved", "rejected"].includes(status)) {
+      return res
+        .status(400)
+        .json({ error: "Invalid status. Use 'approved' or 'rejected'." });
+    }
+
+    // Fetch job and employer info
+    const [jobResult] = await pool.query(
+      `SELECT j.title, u.email 
+       FROM jobs j 
+       JOIN users u ON j.employer_id = u.user_id 
+       WHERE j.job_id = ?`,
+      [jobId]
+    );
+
+    if (jobResult.length === 0) {
+      return res.status(404).json({ error: "Job not found" });
+    }
+
+    const { title, email } = jobResult[0];
+
+    // Update job status and optional rejection reason
+    await pool.query(
+      "UPDATE jobs SET status = ?, rejection_reason = ? WHERE job_id = ?",
+      [status, status === "rejected" ? reason || "Not specified" : null, jobId]
+    );
+
+    // Send appropriate email
+    const mailOptions =
+      status === "approved"
+        ? {
+            from: process.env.SMTP_USER,
+            to: email,
+            subject: `Job Approved ✅ - ${title}`,
+            html: `
+              <p>Hello,</p>
+              <p>Your job posting <b>${title}</b> has been <b>approved</b> by the admin and is now visible to job seekers.</p>
+            `,
+          }
+        : {
+            from: process.env.SMTP_USER,
+            to: email,
+            subject: `Job Rejected ❌ - ${title}`,
+            html: `
+              <p>Hello,</p>
+              <p>Unfortunately, your job posting <b>${title}</b> has been <b>rejected</b> by the admin.</p>
+              <p><b>Reason:</b> ${reason || "Not specified"}</p>
+            `,
+          };
+
+    await transporter.sendMail(mailOptions);
+
+    // Send response
+    res.json({
+      message:
+        status === "approved"
+          ? "Job approved successfully ✅ Email sent to employer."
+          : "Job rejected ❌ Email sent with reason to employer.",
+    });
+  } catch (err) {
+    console.error("Approve/Reject job error:", err);
+    res
+      .status(500)
+      .json({ error: "Server error while approving/rejecting job." });
+  }
+};
+
 export const getEmployerJobs = async (req, res) => {
   try {
     const jobs = await findJobById(jobId);
@@ -509,8 +568,10 @@ export const getEmployerJobs = async (req, res) => {
 // Save a job
 export const saveJob = async (req, res) => {
   try {
-    const jobseekerId = req.user.id;
+    const userId = req.user.id; // This is user_id from token
     const { jobId } = req.params;
+
+    console.log("🔖 Saving job:", jobId, "for user:", userId);
 
     const job = await findApprovedJobById(jobId);
     if (job.length === 0) {
@@ -519,19 +580,23 @@ export const saveJob = async (req, res) => {
         .json({ error: "Job not found or not approved yet" });
     }
 
+    // Check if already saved (jobseeker_id in saved_jobs table references users.user_id)
     const [existing] = await pool.query(
-      checkExistingSavedJobQuery,
-      [jobseekerId, jobId]
+      "SELECT * FROM saved_jobs WHERE jobseeker_id = ? AND job_id = ?",
+      [userId, jobId]
     );
+    
     if (existing.length > 0) {
       return res.status(409).json({ error: "Job already saved" });
     }
 
+    // Save the job (jobseeker_id is actually user_id based on FK constraint)
     await pool.query(
-      insertSavedJobQuery,
-      [jobseekerId, jobId]
+      "INSERT INTO saved_jobs (jobseeker_id, job_id) VALUES (?, ?)",
+      [userId, jobId]
     );
 
+    console.log("✅ Job saved successfully");
     res.status(201).json({ message: "Job saved successfully" });
   } catch (err) {
     console.error("Save job error:", err);
@@ -542,39 +607,84 @@ export const saveJob = async (req, res) => {
 // Get saved jobs for a jobseeker
 export const getSavedJobs = async (req, res) => {
   try {
-    const jobseekerId = req.user.id;
+    const userId = req.user.id; // This is user_id from token
 
+    console.log("📚 Fetching saved jobs for user:", userId);
+
+    // First, check if saved_jobs table exists and get its structure
+    try {
+      const [testRows] = await pool.query(
+        "SELECT * FROM saved_jobs WHERE jobseeker_id = ? LIMIT 1",
+        [userId]
+      );
+      console.log("✅ saved_jobs table accessible, sample row:", testRows[0]);
+    } catch (testErr) {
+      console.error("❌ Error accessing saved_jobs table:", testErr.message);
+      console.error("SQL Error Code:", testErr.code);
+      console.error("SQL State:", testErr.sqlState);
+      return res.status(500).json({ 
+        error: "Database table error", 
+        details: testErr.message 
+      });
+    }
+
+    // Get saved jobs with job details (jobseeker_id in saved_jobs references users.user_id)
     const [rows] = await pool.query(
-      getSavedJobsByJobseekerQuery,
-      [jobseekerId]
+      `SELECT 
+        j.job_id as id,
+        j.title,
+        j.description,
+        j.location,
+        j.salary_min,
+        j.salary_max,
+        j.job_type,
+        j.company_logo,
+        j.created_at as posted_at,
+        e.company_name
+      FROM saved_jobs sj
+      JOIN jobs j ON sj.job_id = j.job_id
+      LEFT JOIN employers e ON j.employer_id = e.user_id
+      WHERE sj.jobseeker_id = ?
+      ORDER BY j.created_at DESC`,
+      [userId]
     );
 
-    const jobs = rows
-      .map((job) => normaliseJobForDashboard(job))
-      .filter(Boolean);
-
-    res.json({ jobs });
+    console.log("✅ Found", rows.length, "saved jobs");
+    res.json({ jobs: rows });
   } catch (err) {
     console.error("Get saved jobs error:", err);
-    res.status(500).json({ error: "Server error while fetching saved jobs" });
+    console.error("Error details:", {
+      message: err.message,
+      code: err.code,
+      sqlState: err.sqlState,
+      sql: err.sql
+    });
+    res.status(500).json({ 
+      error: "Server error while fetching saved jobs",
+      details: err.message 
+    });
   }
 };
 
 // Remove a saved job
 export const removeSavedJob = async (req, res) => {
   try {
-    const jobseekerId = req.user.id;
+    const userId = req.user.id; // This is user_id from token
     const { jobId } = req.params;
 
+    console.log("🗑️ Removing saved job:", jobId, "for user:", userId);
+
+    // Remove the saved job (jobseeker_id in saved_jobs references users.user_id)
     const [result] = await pool.query(
-      removeSavedJobQuery,
-      [jobseekerId, jobId]
+      "DELETE FROM saved_jobs WHERE jobseeker_id = ? AND job_id = ?",
+      [userId, jobId]
     );
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: "Saved job not found" });
     }
 
+    console.log("✅ Saved job removed successfully");
     res.json({ message: "Saved job removed successfully" });
   } catch (err) {
     console.error("Remove saved job error:", err);
@@ -666,7 +776,11 @@ export const applyJob = async (req, res) => {
     }
 
     // Get full job details for approved job
+<<<<<<< HEAD
     const [jobDetails] = await pool.query("SELECT * FROM jobs WHERE job_id = ?", [
+=======
+    const [jobRows] = await pool.query("SELECT * FROM jobs WHERE job_id = ?", [
+>>>>>>> feature/add-AdminDashboard
       job_id,
     ]);
 
@@ -697,16 +811,25 @@ export const applyJob = async (req, res) => {
 
     // Insert application into DB
     await pool.query(
-      insertJobApplicationQuery,
+      "INSERT INTO job_applications (job_id, seeker_id, cover_letter, resume_url, status) VALUES (?, ?, ?, ?, 'Pending')",
       [job_id, seekerId, cover_letter, resumePath]
     );
 
-    // Generate download-ready URL for PDF
+    // Generate download-ready URL for PDF with proper filename and extension
     const getDownloadUrl = (url, filename = "resume.pdf") => {
       if (!url) return null;
       const parts = url.split("/upload/");
       if (parts.length !== 2) return url;
-      return `${parts[0]}/upload/fl_attachment,${filename}/${parts[1]}`;
+      
+      // Get the file path after upload/
+      const filePath = parts[1];
+      
+      // Remove any existing extension and add .pdf
+      const pathWithoutExt = filePath.replace(/\.[^/.]+$/, '');
+      
+      // Use Cloudinary's fl_attachment transformation with proper filename
+      const encodedFilename = encodeURIComponent(filename);
+      return `${parts[0]}/upload/fl_attachment:${encodedFilename}/${pathWithoutExt}.pdf`;
     };
 
     const downloadUrl = getDownloadUrl(resumePath);
@@ -731,23 +854,48 @@ export const getMyApplications = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Get seeker_id
+    console.log("📋 Fetching applications for user:", userId);
+
+    // Get seeker_id from user_id
     const [seekerRows] = await pool.query(
-      getSeekerIdByUserIdQuery,
+      "SELECT seeker_id FROM job_seeker WHERE user_id = ?",
       [userId]
     );
-    if (seekerRows.length === 0)
+    
+    if (seekerRows.length === 0) {
+      console.log("❌ Jobseeker profile not found for user:", userId);
       return res.status(404).json({ error: "Jobseeker profile not found" });
+    }
 
     const jobseekerId = seekerRows[0].seeker_id;
+    console.log("✅ Found seeker_id:", jobseekerId);
 
-    // Fetch applications
+    // Fetch applications with job details
     const [applications] = await pool.query(
-      getApplicationsBySeekerIdQuery,
+      `SELECT 
+        a.application_id,
+        a.job_id,
+        a.seeker_id,
+        a.cover_letter,
+        a.resume_url,
+        a.status,
+        a.applied_at,
+        j.title,
+        j.company_logo,
+        j.location,
+        j.job_type,
+        j.work_type,
+        e.company_name
+       FROM job_applications a
+       JOIN jobs j ON a.job_id = j.job_id
+       LEFT JOIN employers e ON j.employer_id = e.user_id
+       WHERE a.seeker_id = ?
+       ORDER BY a.applied_at DESC`,
       [jobseekerId]
     );
 
-    res.json(applications);
+    console.log("✅ Found", applications.length, "applications");
+    res.json({ applications });
   } catch (err) {
     console.error("getMyApplications Error:", err);
     res.status(500).json({ error: "Server error while fetching applications" });
@@ -769,8 +917,13 @@ export const getApplicantsByJob = async (req, res) => {
 
     // Verify job ownership (employer_id in jobs references user_id in users)
     const [jobOwnership] = await pool.query(
+<<<<<<< HEAD
       verifyJobOwnershipQuery,
       [job_id, employerId]
+=======
+      "SELECT job_id FROM jobs WHERE job_id = ? AND employer_id = ?",
+      [jobId, employerId]
+>>>>>>> feature/add-AdminDashboard
     );
 
     if (jobOwnership.length === 0) {
@@ -797,32 +950,39 @@ export const getApplicantsByJob = async (req, res) => {
       }
     }
 
-    console.log("✅ Job ownership verified");
-
-    // Fetch applicants
+    // Fetch applicants with job seeker details
     const [applicants] = await pool.query(
-      getApplicantsByJobIdQuery,
-      [job_id]
+      `SELECT a.application_id, a.status, a.applied_at,
+              js.full_name AS jobseeker_name,
+              u.email AS jobseeker_email,
+              a.cover_letter, a.resume_url
+         FROM job_applications a
+         JOIN job_seeker js ON a.seeker_id = js.seeker_id
+         JOIN users u ON js.user_id = u.user_id
+        WHERE a.job_id = ?`,
+      [jobId]
     );
 
     console.log(`✅ Found ${applicants.length} applicants for job ${jobId}`);
 
-    // Generate download-ready URLs
-    const getDownloadUrl = (url, filename = "resume.pdf") => {
-      if (!url) return null;
-      const parts = url.split("/upload/");
-      if (parts.length !== 2) return url;
-      return `${parts[0]}/upload/fl_attachment,${filename}/${parts[1]}`;
-    };
-
-    const applicantsWithDownload = applicants.map((app) => ({
-      ...app,
-      downloadUrl: getDownloadUrl(app.resume_url),
-    }));
+    // Add download filename to each applicant
+    const applicantsWithDownload = applicants.map((app) => {
+      // Create safe filename from applicant name
+      const safeName = app.jobseeker_name
+        ? app.jobseeker_name.replace(/[^a-zA-Z0-9]/g, '_')
+        : 'resume';
+      const filename = `${safeName}_resume.pdf`;
+      
+      return {
+        ...app,
+        downloadFilename: filename,
+      };
+    });
 
     res.json(applicantsWithDownload);
   } catch (err) {
     console.error("getApplicantsByJob Error:", err);
+    console.error("Error details:", err.message);
     res.status(500).json({ error: "Server error while fetching applicants" });
   }
 };
@@ -836,15 +996,14 @@ export const updateApplicationStatus = async (req, res) => {
 
     console.log("🔄 Updating application status:", applicationId, "to", status);
 
-    // Allow all status values from frontend
+    // Allow all status values from frontend (case-insensitive)
     const validStatuses = [
-      "pending",
-      "reviewed",
-      "shortlisted",
-      "interviewed",
-      "rejected",
-      "Approved",
+      "Pending",
+      "Reviewed",
+      "Shortlisted",
+      "Interviewed",
       "Rejected",
+      "Approved",
     ];
     if (!validStatuses.includes(status))
       return res.status(400).json({ error: "Invalid status" });
@@ -882,10 +1041,10 @@ export const updateApplicationStatus = async (req, res) => {
     if (status === "Approved" || status === "Rejected") {
       try {
         const transporter = nodemailer.createTransport({
-          service: "gmail",
+          service: process.env.SMTP_SERVICE || "gmail",
           auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS,
+            user: process.env.SMTP_USER || process.env.EMAIL_USER,
+            pass: process.env.SMTP_PASS || process.env.EMAIL_PASS,
           },
         });
 
@@ -904,7 +1063,7 @@ Congratulations! Your application for the job "${app.job_title}" has been approv
 We regret to inform you that your application for the job "${app.job_title}" has been rejected.`;
 
         await transporter.sendMail({
-          from: `"Job Portal" <${process.env.EMAIL_USER}>`,
+          from: `"Job Portal" <${process.env.SMTP_USER || process.env.EMAIL_USER}>`,
           to: app.email,
           subject,
           text,

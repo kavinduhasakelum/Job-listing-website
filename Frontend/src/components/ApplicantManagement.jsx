@@ -86,7 +86,7 @@ function ApplicantCard({ applicant, onStatusChange, onDownloadResume }) {
         <div className="flex items-center gap-2">
           {applicant.resume_url && (
             <button
-              onClick={() => onDownloadResume(applicant.resume_url)}
+              onClick={() => onDownloadResume(applicant.resume_url, applicant.downloadFilename || `${applicant.jobseeker_name?.replace(/[^a-zA-Z0-9]/g, '_')}_resume.pdf`)}
               className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition-colors"
             >
               <FaFileDownload />
@@ -189,8 +189,28 @@ export default function ApplicantManagement({ jobId, jobTitle }) {
     }
   };
 
-  const handleDownloadResume = (resumeUrl) => {
-    if (resumeUrl) {
+  const handleDownloadResume = async (resumeUrl, filename = "resume.pdf") => {
+    if (!resumeUrl) return;
+    
+    try {
+      // Fetch the file as a blob
+      const response = await fetch(resumeUrl);
+      const blob = await response.blob();
+      
+      // Create a temporary download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename; // This forces the filename with .pdf extension
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Download error:", error);
+      // Fallback to opening in new tab
       window.open(resumeUrl, "_blank");
     }
   };

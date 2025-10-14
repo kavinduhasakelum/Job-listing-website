@@ -1,6 +1,6 @@
-import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import React from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 // Loading spinner component
 const LoadingSpinner = () => (
@@ -10,12 +10,12 @@ const LoadingSpinner = () => (
 );
 
 // Protected Route component
-const ProtectedRoute = ({ 
-  children, 
-  requiredRole = null, 
-  requiredRoles = [], 
-  redirectTo = '/register',
-  fallback = null 
+const ProtectedRoute = ({
+  children,
+  requiredRole = null,
+  requiredRoles = [],
+  redirectTo = "/register",
+  fallback = null,
 }) => {
   const { isAuthenticated, loading, hasRole, hasAnyRole, user } = useAuth();
   const location = useLocation();
@@ -37,15 +37,15 @@ const ProtectedRoute = ({
     if (fallback) {
       return fallback;
     }
-    
+
     // Redirect based on user role
     const roleRedirects = {
-      admin: '/admin',
-      employer: '/employer-dashboard',
-      jobseeker: '/',
+      admin: "/admin",
+      employer: "/employer-dashboard",
+      jobseeker: "/",
     };
-    
-    const redirectPath = roleRedirects[user?.role?.toLowerCase()] || '/';
+
+    const redirectPath = roleRedirects[user?.role?.toLowerCase()] || "/";
     return <Navigate to={redirectPath} replace />;
   }
 
@@ -54,14 +54,14 @@ const ProtectedRoute = ({
     if (fallback) {
       return fallback;
     }
-    
+
     const roleRedirects = {
-      admin: '/admin',
-      employer: '/employer-dashboard', 
-      jobseeker: '/',
+      admin: "/admin",
+      employer: "/employer-dashboard",
+      jobseeker: "/",
     };
-    
-    const redirectPath = roleRedirects[user?.role?.toLowerCase()] || '/';
+
+    const redirectPath = roleRedirects[user?.role?.toLowerCase()] || "/";
     return <Navigate to={redirectPath} replace />;
   }
 
@@ -73,31 +73,55 @@ const ProtectedRoute = ({
 // Moved to withAuth.js to support Fast Refresh.
 
 // Specific role-based route components for convenience
-export const AdminRoute = ({ children, fallback, redirectTo = '/register' }) => (
-  <ProtectedRoute requiredRole="admin" fallback={fallback} redirectTo={redirectTo}>
+export const AdminRoute = ({
+  children,
+  fallback,
+  redirectTo = "/register",
+}) => (
+  <ProtectedRoute
+    requiredRole="admin"
+    fallback={fallback}
+    redirectTo={redirectTo}
+  >
     {children}
   </ProtectedRoute>
 );
 
-export const EmployerRoute = ({ children, fallback, redirectTo = '/register' }) => (
-  <ProtectedRoute requiredRole="employer" fallback={fallback} redirectTo={redirectTo}>
+export const EmployerRoute = ({
+  children,
+  fallback,
+  redirectTo = "/register",
+}) => (
+  <ProtectedRoute
+    requiredRole="employer"
+    fallback={fallback}
+    redirectTo={redirectTo}
+  >
     {children}
   </ProtectedRoute>
 );
 
-export const JobSeekerRoute = ({ children, fallback, redirectTo = '/register' }) => (
-  <ProtectedRoute requiredRole="jobseeker" fallback={fallback} redirectTo={redirectTo}>
+export const JobSeekerRoute = ({
+  children,
+  fallback,
+  redirectTo = "/register",
+}) => (
+  <ProtectedRoute
+    requiredRole="jobseeker"
+    fallback={fallback}
+    redirectTo={redirectTo}
+  >
     {children}
   </ProtectedRoute>
 );
 
 // Component to show different content based on roles
-export const RoleBasedRender = ({ 
-  adminContent = null, 
-  employerContent = null, 
-  jobSeekerContent = null, 
+export const RoleBasedRender = ({
+  adminContent = null,
+  employerContent = null,
+  jobSeekerContent = null,
   defaultContent = null,
-  children 
+  children,
 }) => {
   const { user, isAuthenticated } = useAuth();
 
@@ -108,11 +132,11 @@ export const RoleBasedRender = ({
   const userRole = user?.role?.toLowerCase();
 
   switch (userRole) {
-    case 'admin':
+    case "admin":
       return adminContent || children;
-    case 'employer':
+    case "employer":
       return employerContent || children;
-    case 'jobseeker':
+    case "jobseeker":
       return jobSeekerContent || children;
     default:
       return defaultContent || children;
@@ -120,11 +144,11 @@ export const RoleBasedRender = ({
 };
 
 // Component to conditionally render content based on authentication
-export const AuthGuard = ({ 
-  authenticated = null, 
-  unauthenticated = null, 
+export const AuthGuard = ({
+  authenticated = null,
+  unauthenticated = null,
   loading = null,
-  children 
+  children,
 }) => {
   const { isAuthenticated, loading: authLoading } = useAuth();
 

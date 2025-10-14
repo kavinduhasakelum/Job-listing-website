@@ -9,7 +9,7 @@ import {
   softDeleteUser,
   hardDeleteUser,
   getUsersByRole,
-  getAllJobs,
+  getAllJobsAdmin,
   approveOrRejectJob,
   deleteJobByAdmin,
   getPendingJobs,
@@ -38,7 +38,7 @@ router.get("/users/:role", getUsersByRole);
 router.get('/users/:id', getUserByIdAll);
 
 // --- JOB MANAGEMENT ---
-router.get("/jobs", getAllJobs);
+router.get("/jobs", getAllJobsAdmin);
 router.get("/jobs/pending", getPendingJobs);
 router.get("/jobs/rejected", getRejectedJobs);
 router.put("/jobs/approve/:jobId", approveOrRejectJob);
