@@ -103,14 +103,7 @@ function NavBar() {
                 Browse Jobs
               </button>
             </li>
-            <li>
-              <a
-                href="#"
-                className="hover:text-purple-600 transition-colors duration-300"
-              >
-                Companies
-              </a>
-            </li>
+            
             <li>
               <a
                 href="/about"
@@ -124,52 +117,9 @@ function NavBar() {
 
         {/* Right: Search + Notification + CTA + Avatar */}
         <div className="flex items-center gap-3 md:gap-4">
-          {/* Search */}
-          <div className="relative hidden sm:block">
-            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                className="w-5 h-5"
-              >
-                <path
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z"
-                />
-              </svg>
-            </span>
-            <input
-              type="text"
-              placeholder="Search"
-              className="h-10 w-44 md:w-64 rounded-xl bg-gray-100 border border-gray-200 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200"
-            />
-          </div>
+       
 
-          {/* Notification Icon */}
-          <button
-            type="button"
-            className="relative p-2 rounded-lg hover:bg-gray-100 transition"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              className="w-5 h-5 text-gray-700"
-            >
-              <path
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6 6 0 0 0-9.33-4.94M6 9v5.159c0 .538-.214 1.055-.595 1.436L4 17h5"
-              />
-            </svg>
-            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
-          </button>
+        
 
           {/* CTA - Show different buttons based on auth status */}
           {isAuthenticated ? (
@@ -326,14 +276,7 @@ function NavBar() {
                 Browse Jobs
               </button>
             </li>
-            <li>
-              <a
-                href="#"
-                className="block px-2 py-2 rounded-lg hover:bg-gray-100 hover:text-purple-600 transition-colors duration-300"
-              >
-                Companies
-              </a>
-            </li>
+           
             <li>
               <a
                 href="/about"

@@ -262,6 +262,35 @@ export const getAllJobs = async (req, res) => {
   }
 };
 
+// Get featured jobs (latest 6 approved jobs)
+export const getFeaturedJobs = async (req, res) => {
+  try {
+    const [jobs] = await pool.query(
+      `SELECT 
+        j.job_id,
+        j.title,
+        j.description,
+        j.location,
+        j.salary_min,
+        j.salary_max,
+        j.job_type,
+        j.work_type,
+        j.company_logo,
+        j.created_at,
+        e.company_name
+       FROM jobs j
+       LEFT JOIN employers e ON j.employer_id = e.user_id
+       WHERE j.status = 'approved'
+       ORDER BY j.created_at DESC
+       LIMIT 6`
+    );
+    res.json(jobs);
+  } catch (err) {
+    console.error("❌ Error fetching featured jobs:", err);
+    res.status(500).json({ error: "Server error while fetching featured jobs" });
+  }
+};
+
 // get job by id
 export const getJobById = async (req, res) => {
   try {
@@ -776,11 +805,7 @@ export const applyJob = async (req, res) => {
     }
 
     // Get full job details for approved job
-<<<<<<< HEAD
-    const [jobDetails] = await pool.query("SELECT * FROM jobs WHERE job_id = ?", [
-=======
     const [jobRows] = await pool.query("SELECT * FROM jobs WHERE job_id = ?", [
->>>>>>> feature/add-AdminDashboard
       job_id,
     ]);
 
@@ -917,13 +942,8 @@ export const getApplicantsByJob = async (req, res) => {
 
     // Verify job ownership (employer_id in jobs references user_id in users)
     const [jobOwnership] = await pool.query(
-<<<<<<< HEAD
-      verifyJobOwnershipQuery,
-      [job_id, employerId]
-=======
       "SELECT job_id FROM jobs WHERE job_id = ? AND employer_id = ?",
       [jobId, employerId]
->>>>>>> feature/add-AdminDashboard
     );
 
     if (jobOwnership.length === 0) {
