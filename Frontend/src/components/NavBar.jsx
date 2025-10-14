@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { useJobSeekerProfile } from "../hooks/useJobSeekerProfile";
 
 function NavBar() {
   const [open, setOpen] = useState(false);
@@ -15,8 +16,10 @@ function NavBar() {
     fetchEmployerProfile,
   } = useAuth();
   const navigate = useNavigate();
+  const { hasProfile: hasJobSeekerProfile } = useJobSeekerProfile();
   const employerCheck = typeof isEmployer === "function" ? isEmployer() : false;
   const hasEmployerProfile = !!employerProfile;
+  const isJobSeeker = user?.role === "jobseeker";
 
   useEffect(() => {
     if (isAuthenticated && employerCheck && !hasEmployerProfile && !employerProfileLoading) {
@@ -54,7 +57,7 @@ function NavBar() {
     navigate('/register');
   };
 
-  const handleProfileClick = () => {
+  const handleProfileClick = async () => {
     const adminCheck = typeof isAdmin === "function" ? isAdmin() : false;
     if (adminCheck) {
       navigate('/admin');
@@ -65,7 +68,8 @@ function NavBar() {
         navigate('/employer/profile');
       }
     } else {
-      navigate('/profile');
+      // Job seeker - navigate to dashboard
+      navigate('/jobseeker-dashboard');
     }
   };
 
@@ -185,6 +189,7 @@ function NavBar() {
                 <button
                   onClick={handleProfileClick}
                   className="w-9 h-9 rounded-full border border-gray-200 hover:scale-105 transition-transform duration-300 cursor-pointer overflow-hidden bg-gradient-to-r from-purple-600 to-orange-500 text-white text-sm font-bold flex items-center justify-center"
+                  title={isJobSeeker && hasJobSeekerProfile === false ? "Complete your profile to apply for jobs" : "View profile"}
                 >
                   {profileImageUrl ? (
                     <img
@@ -196,6 +201,13 @@ function NavBar() {
                     profileInitial
                   )}
                 </button>
+                {/* Profile Incomplete Badge - Show for job seekers without profile */}
+                {isJobSeeker && hasJobSeekerProfile === false && (
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-5 w-5 bg-orange-500 items-center justify-center text-white text-xs font-bold">!</span>
+                  </span>
+                )}
               </div>
               
               {/* Logout Button */}
@@ -360,7 +372,7 @@ function NavBar() {
                     ? hasEmployerProfile
                       ? 'Employer Dashboard'
                       : 'Employer Profile'
-                    : 'Profile'}
+                    : 'My Dashboard'}
               </button>
               
               <button
